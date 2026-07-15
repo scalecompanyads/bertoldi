@@ -21,7 +21,7 @@ export default async function NovoProcessoPage({ params }: Props) {
   if (!cliente) notFound()
 
   return (
-    <div className="max-w-lg space-y-6">
+    <div className="max-w-2xl space-y-6">
       <nav className="flex items-center gap-1 text-sm text-muted-foreground">
         <Link href="/admin/clientes" className="hover:text-foreground">Clientes</Link>
         <ChevronRight className="h-3.5 w-3.5" />

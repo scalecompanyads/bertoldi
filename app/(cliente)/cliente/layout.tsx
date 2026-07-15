@@ -26,17 +26,17 @@ export default async function ClienteLayout({ children }: { children: React.Reac
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-14 max-w-2xl items-center justify-between px-4">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
           <div className="flex items-center gap-2">
             <span className="text-base font-semibold tracking-tight">Bertoldi Advocacia</span>
           </div>
-          <span className="text-sm text-muted-foreground truncate max-w-[140px]">
-            {cliente?.nome ?? usuario?.nome ?? ''}
+          <span className="text-sm text-muted-foreground truncate max-w-[200px]">
+            Olá, <span className="font-medium text-foreground">{cliente?.nome ?? usuario?.nome ?? ''}</span>
           </span>
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-2xl flex-1 px-4 py-6 pb-24">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 pb-24">
         {children}
       </main>
 

@@ -2,13 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Briefcase, User, LogOut } from 'lucide-react'
+import { Briefcase, User, LogOut, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
 const NAV = [
   { href: '/cliente', label: 'Processos', icon: Briefcase, exact: true },
+  { href: '/cliente/comunicados', label: 'Avisos', icon: Bell, exact: false },
   { href: '/cliente/perfil', label: 'Perfil', icon: User, exact: false },
 ]
 
@@ -24,7 +25,7 @@ export function ClienteNav() {
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="mx-auto flex h-16 max-w-2xl items-center justify-around px-4">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-around px-4">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
           return (

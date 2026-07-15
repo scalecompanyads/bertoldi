@@ -286,20 +286,34 @@ create policy "cliente: leitura de comunicados próprios" on comunicados
 -- ============================================================
 -- FUNÇÃO: sincroniza usuarios ao criar conta no Auth
 -- ============================================================
-create or replace function handle_new_user()
-returns trigger language plpgsql security definer as $$
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  papel_informado text := nullif(trim(new.raw_user_meta_data->>'papel'), '');
+  papel_final papel_usuario := 'cliente';
 begin
+  if papel_informado in ('admin', 'advogado', 'secretaria', 'cliente') then
+    papel_final := papel_informado::papel_usuario;
+  end if;
+
   insert into public.usuarios (id, nome, email, papel)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'nome', split_part(new.email, '@', 1)),
+    coalesce(nullif(trim(new.raw_user_meta_data->>'nome'), ''), split_part(new.email, '@', 1)),
     new.email,
-    coalesce((new.raw_user_meta_data->>'papel')::papel_usuario, 'cliente')
+    papel_final
   );
+
   return new;
 end;
 $$;
 
+alter function public.handle_new_user() owner to postgres;
+
 create trigger on_auth_user_created
   after insert on auth.users
-  for each row execute procedure handle_new_user();
+  for each row execute function public.handle_new_user();

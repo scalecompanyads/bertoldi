@@ -3,12 +3,86 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { loginAsCliente } from '@/lib/actions/auth'
+import { formatCpfInput } from '@/lib/cpf'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
 
-export function LoginForm() {
+function ClienteLoginForm() {
+  const router = useRouter()
+  const [identifier, setIdentifier] = useState('')
+  const [password, setPassword] = useState('')
+  const [useEmail, setUseEmail] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+
+    const result = await loginAsCliente(identifier, password)
+
+    if (result.error) {
+      toast.error(result.error)
+      setLoading(false)
+      return
+    }
+
+    router.push('/cliente')
+    router.refresh()
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="cliente-identifier">
+          {useEmail ? 'E-mail' : 'CPF'}
+        </Label>
+        <Input
+          id="cliente-identifier"
+          type={useEmail ? 'email' : 'text'}
+          inputMode={useEmail ? 'email' : 'numeric'}
+          autoComplete={useEmail ? 'email' : 'username'}
+          required
+          value={identifier}
+          onChange={(e) => {
+            setIdentifier(useEmail ? e.target.value : formatCpfInput(e.target.value))
+          }}
+          placeholder={useEmail ? 'seu@email.com' : '000.000.000-00'}
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="cliente-password">Senha</Label>
+        <Input
+          id="cliente-password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+      </div>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? 'Entrando...' : 'Entrar como cliente'}
+      </Button>
+      <button
+        type="button"
+        className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => {
+          setUseEmail((v) => !v)
+          setIdentifier('')
+        }}
+      >
+        {useEmail ? 'Entrar com CPF' : 'Entrar com e-mail'}
+      </button>
+    </form>
+  )
+}
+
+function EquipeLoginForm() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -27,28 +101,29 @@ export function LoginForm() {
       return
     }
 
-    // Busca papel do usuário para redirecionar corretamente
     const { data: usuario } = await supabase
       .from('usuarios')
       .select('papel')
       .eq('id', data.user.id)
       .single()
 
-    if (usuario?.papel === 'cliente') {
-      router.push('/cliente')
-    } else {
-      router.push('/admin')
+    if (!usuario || usuario.papel === 'cliente') {
+      await supabase.auth.signOut()
+      toast.error('Esta conta é de cliente. Use a aba Cliente para entrar.')
+      setLoading(false)
+      return
     }
 
+    router.push('/admin')
     router.refresh()
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-1.5">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="equipe-email">E-mail</Label>
         <Input
-          id="email"
+          id="equipe-email"
           type="email"
           autoComplete="email"
           required
@@ -58,9 +133,9 @@ export function LoginForm() {
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="password">Senha</Label>
+        <Label htmlFor="equipe-password">Senha</Label>
         <Input
-          id="password"
+          id="equipe-password"
           type="password"
           autoComplete="current-password"
           required
@@ -70,8 +145,25 @@ export function LoginForm() {
         />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Entrando...' : 'Entrar'}
+        {loading ? 'Entrando...' : 'Entrar como equipe'}
       </Button>
     </form>
+  )
+}
+
+export function LoginForm() {
+  return (
+    <Tabs defaultValue="cliente" className="w-full">
+      <TabsList className="grid w-full grid-cols-2">
+        <TabsTrigger value="cliente">Cliente</TabsTrigger>
+        <TabsTrigger value="equipe">Equipe</TabsTrigger>
+      </TabsList>
+      <TabsContent value="cliente" className="mt-4">
+        <ClienteLoginForm />
+      </TabsContent>
+      <TabsContent value="equipe" className="mt-4">
+        <EquipeLoginForm />
+      </TabsContent>
+    </Tabs>
   )
 }

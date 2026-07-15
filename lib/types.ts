@@ -19,6 +19,9 @@ export interface Cliente {
   cpf_cnpj: string | null
   telefone: string | null
   email: string | null
+  arquivado: boolean
+  arquivado_em: string | null
+  arquivado_por: string | null
   criado_em: string
   atualizado_em: string | null
   atualizado_por: string | null
@@ -41,6 +44,13 @@ export interface Processo {
   tribunal: string | null
   vara_orgao: string | null
   tipo_servico: string
+  parte_autora: string | null
+  parte_re: string | null
+  outras_partes: string | null
+  assunto: string | null
+  valor_causa: number | null
+  data_ajuizamento: string | null
+  cidade_origem: string | null
   status_interno: StatusProcesso
   data_contratacao: string
   criado_em: string
@@ -104,4 +114,39 @@ export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
   comprovante: 'Comprovante',
   decisao: 'Decisão',
   outro: 'Outro',
+}
+
+export type StatusTarefa = 'a_fazer' | 'em_andamento' | 'aguardando' | 'concluido'
+
+export interface Tarefa {
+  id: string
+  usuario_id: string
+  processo_id: string | null
+  titulo: string
+  descricao: string | null
+  status: StatusTarefa
+  prazo: string | null
+  ordem: number
+  concluida_em: string | null
+  criado_em: string
+  processo?: Pick<Processo, 'id' | 'cliente_id' | 'numero_cnj' | 'tipo_servico'> & {
+    clientes?: Pick<Cliente, 'id' | 'nome'>
+  } | null
+}
+
+export const STATUS_TAREFA_LABEL: Record<StatusTarefa, string> = {
+  a_fazer: 'A fazer',
+  em_andamento: 'Em andamento',
+  aguardando: 'Aguardando',
+  concluido: 'Concluído',
+}
+
+export interface Comunicado {
+  id: string
+  cliente_id: string | null
+  titulo: string
+  mensagem: string
+  enviado_em: string
+  lido: boolean
+  cliente?: Pick<Cliente, 'id' | 'nome'> | null
 }

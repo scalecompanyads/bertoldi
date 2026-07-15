@@ -9,6 +9,10 @@ import { ProcessoForm } from '@/components/admin/processo-form'
 import { AdicionarEventoForm, RemoverEventoBtn } from '@/components/admin/evento-form'
 import { ObservacaoForm, RemoverObservacaoBtn } from '@/components/admin/observacao-form'
 import { DocumentoUpload, DocumentoItem } from '@/components/admin/documento-upload'
+import { TribunalBadge } from '@/components/admin/tribunal-badge'
+import { VerificarDatajudBtn } from '@/components/admin/verificar-datajud-btn'
+import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
+import { AutoScrollTo } from '@/components/shared/auto-scroll-to'
 import { STATUS_PROCESSO_LABEL } from '@/lib/types'
 import type { Processo, Cliente, EventoLinhaDotTempo, Observacao, Documento, Usuario } from '@/lib/types'
 
@@ -35,6 +39,8 @@ export default async function ProcessoDetailPage({ params }: Props) {
     { data: observacoes },
     { data: documentos },
     { data: advogados },
+    { data: ultimaVerificacao },
+    { count: novasMovimentacoes },
   ] = await Promise.all([
     supabase.from('processos').select('*').eq('id', processoId).single(),
     supabase.from('clientes').select('id, nome').eq('id', clienteId).single(),
@@ -42,6 +48,8 @@ export default async function ProcessoDetailPage({ params }: Props) {
     supabase.from('observacoes').select('*, autor:autor_id(id, nome)').eq('processo_id', processoId).order('criado_em', { ascending: false }),
     supabase.from('documentos').select('*').eq('processo_id', processoId).order('criado_em', { ascending: false }),
     supabase.from('usuarios').select('id, nome').in('papel', ['admin', 'advogado']).order('nome'),
+    supabase.from('verificacoes_datajud').select('*').eq('processo_id', processoId).order('verificado_em', { ascending: false }).limit(1).single(),
+    supabase.from('verificacoes_datajud').select('*', { count: 'exact', head: true }).eq('processo_id', processoId).eq('houve_movimentacao', true),
   ])
 
   if (!processo || !cliente) notFound()
@@ -51,6 +59,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
   const evs = (eventos ?? []) as (EventoLinhaDotTempo & { autor: Pick<Usuario, 'id' | 'nome'> | null })[]
   const obs = (observacoes ?? []) as (Observacao & { autor: Pick<Usuario, 'id' | 'nome'> | null })[]
   const docs = (documentos ?? []) as Documento[]
+
 
   return (
     <div className="space-y-6">
@@ -67,24 +76,47 @@ export default async function ProcessoDetailPage({ params }: Props) {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold">{p.tipo_servico}</h1>
-          {p.numero_cnj && <p className="text-sm font-mono text-muted-foreground mt-1">{p.numero_cnj}</p>}
+          {p.numero_cnj && (
+            <div className="mt-1.5 space-y-1.5">
+              <p className="text-sm font-mono text-muted-foreground">{p.numero_cnj}</p>
+              <TribunalBadge numero={p.numero_cnj} />
+            </div>
+          )}
         </div>
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COR[p.status_interno]}`}>
           {STATUS_PROCESSO_LABEL[p.status_interno]}
         </span>
       </div>
 
-      <Tabs defaultValue="timeline">
+      {ultimaVerificacao?.houve_movimentacao && p.numero_cnj && (
+        <AutoScrollTo targetId="datajud-section" delay={150} />
+      )}
+
+      {/* Registrar andamento — sempre à mão, sem precisar achar a aba */}
+      <div className="max-w-4xl">
+        <AdicionarEventoForm processoId={processoId} clienteId={clienteId} />
+      </div>
+
+      <Tabs defaultValue={ultimaVerificacao?.houve_movimentacao && p.numero_cnj ? 'datajud' : 'timeline'}>
         <TabsList>
           <TabsTrigger value="timeline">Linha do tempo ({evs.length})</TabsTrigger>
           <TabsTrigger value="documentos">Documentos ({docs.length})</TabsTrigger>
           <TabsTrigger value="observacoes">Observações ({obs.length})</TabsTrigger>
+          {p.numero_cnj && (
+            <TabsTrigger value="datajud" className="relative">
+              Datajud
+              {(novasMovimentacoes ?? 0) > 0 && (
+                <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                  {novasMovimentacoes}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger value="dados">Dados do processo</TabsTrigger>
         </TabsList>
 
         {/* ABA LINHA DO TEMPO */}
-        <TabsContent value="timeline" className="mt-6 space-y-4 max-w-2xl">
-          <AdicionarEventoForm processoId={processoId} clienteId={clienteId} />
+        <TabsContent value="timeline" className="mt-6 space-y-4 max-w-4xl">
           {evs.length > 0 ? (
             <div className="relative">
               <div className="absolute left-[7px] top-0 bottom-0 w-px bg-border" />
@@ -117,7 +149,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
         </TabsContent>
 
         {/* ABA DOCUMENTOS */}
-        <TabsContent value="documentos" className="mt-6 space-y-3 max-w-2xl">
+        <TabsContent value="documentos" className="mt-6 space-y-3 max-w-4xl">
           <DocumentoUpload processoId={processoId} clienteId={clienteId} />
           {docs.length > 0 ? (
             <div className="space-y-2 mt-2">
@@ -131,7 +163,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
         </TabsContent>
 
         {/* ABA OBSERVAÇÕES */}
-        <TabsContent value="observacoes" className="mt-6 space-y-4 max-w-2xl">
+        <TabsContent value="observacoes" className="mt-6 space-y-4 max-w-4xl">
           <ObservacaoForm processoId={processoId} clienteId={clienteId} />
           {obs.length > 0 ? (
             <div className="space-y-3">
@@ -160,8 +192,75 @@ export default async function ProcessoDetailPage({ params }: Props) {
           )}
         </TabsContent>
 
+        {/* ABA DATAJUD */}
+        {p.numero_cnj && (
+          <TabsContent id="datajud-section" value="datajud" className="mt-6 max-w-3xl space-y-5">
+            <div className="space-y-1">
+              <h3 className="font-semibold text-sm">Análise de andamento</h3>
+              <p className="text-xs text-muted-foreground">
+                Consulta automática no portal do tribunal (eSAJ) ou via Datajud/CNJ, conforme o tribunal.
+                Cache de 48h — use "Forçar atualização" quando precisar de dado imediato.
+              </p>
+            </div>
+
+            {/* Última verificação */}
+            {ultimaVerificacao ? (() => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const movs = (ultimaVerificacao.raw_response as any)?.movimentos as { data: string; descricao: string }[] | undefined
+              return (
+                <div className="space-y-3">
+                  {/* Status */}
+                  <div className={`rounded-lg border p-3 flex items-start gap-2.5 text-sm ${
+                    ultimaVerificacao.houve_movimentacao
+                      ? 'border-green-400/50 bg-green-50 dark:border-green-700/50 dark:bg-green-950/30'
+                      : 'bg-muted/40'
+                  }`}>
+                    {ultimaVerificacao.houve_movimentacao && (
+                      <div className="h-2 w-2 rounded-full bg-green-500 shrink-0 mt-1.5" />
+                    )}
+                    <div className="space-y-0.5">
+                      {ultimaVerificacao.houve_movimentacao ? (
+                        <p className="font-medium text-green-700 dark:text-green-400">Nova movimentação detectada</p>
+                      ) : (
+                        <p className="text-muted-foreground">Sem novidades na última verificação.</p>
+                      )}
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(ultimaVerificacao.verificado_em).toLocaleString('pt-BR')}
+                        {' '}&mdash;{' '}
+                        <span className="capitalize">{ultimaVerificacao.origem}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  {movs && movs.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        Histórico — {movs.length} movimentações
+                      </p>
+                      <MovimentoTimeline
+                        movimentos={movs}
+                        novaMovimentacao={ultimaVerificacao.houve_movimentacao}
+                        publicarEm={{ processoId, clienteId }}
+                      />
+                    </div>
+                  ) : ultimaVerificacao.ultimo_andamento ? (
+                    <p className="text-sm text-muted-foreground">{ultimaVerificacao.ultimo_andamento}</p>
+                  ) : null}
+                </div>
+              )
+            })() : (
+              <div className="rounded-lg border p-4">
+                <p className="text-sm text-muted-foreground">Nenhuma verificação realizada ainda.</p>
+              </div>
+            )}
+
+            <VerificarDatajudBtn processoId={processoId} autoFetch={!ultimaVerificacao} />
+          </TabsContent>
+        )}
+
         {/* ABA DADOS */}
-        <TabsContent value="dados" className="mt-6 max-w-lg">
+        <TabsContent value="dados" className="mt-6 max-w-2xl">
           <ProcessoForm
             clienteId={clienteId}
             processo={p}

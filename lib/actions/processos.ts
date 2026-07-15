@@ -3,6 +3,27 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
+// Aceita "R$ 16.210,00", "16.210,00" ou "16210.00"
+function parseValorCausa(raw: FormDataEntryValue | null): number | null {
+  const s = (raw as string | null)?.replace(/[R$\s]/g, '') ?? ''
+  if (!s) return null
+  const normalizado = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s
+  const n = Number(normalizado)
+  return Number.isFinite(n) ? n : null
+}
+
+function camposCapa(formData: FormData) {
+  return {
+    parte_autora: (formData.get('parte_autora') as string) || null,
+    parte_re: (formData.get('parte_re') as string) || null,
+    outras_partes: (formData.get('outras_partes') as string) || null,
+    assunto: (formData.get('assunto') as string) || null,
+    valor_causa: parseValorCausa(formData.get('valor_causa')),
+    data_ajuizamento: (formData.get('data_ajuizamento') as string) || null,
+    cidade_origem: (formData.get('cidade_origem') as string) || null,
+  }
+}
+
 export async function criarProcesso(clienteId: string, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,6 +38,7 @@ export async function criarProcesso(clienteId: string, formData: FormData) {
     status_interno: formData.get('status_interno') as string || 'triagem',
     data_contratacao: formData.get('data_contratacao') as string,
     responsavel_id: (formData.get('responsavel_id') as string) || null,
+    ...camposCapa(formData),
   }).select('id').single()
 
   if (error) return { error: error.message }
@@ -37,6 +59,7 @@ export async function atualizarProcesso(id: string, clienteId: string, formData:
     status_interno: formData.get('status_interno') as string,
     data_contratacao: formData.get('data_contratacao') as string,
     responsavel_id: (formData.get('responsavel_id') as string) || null,
+    ...camposCapa(formData),
     atualizado_em: new Date().toISOString(),
     atualizado_por: user.id,
   }).eq('id', id)

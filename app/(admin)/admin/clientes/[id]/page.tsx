@@ -5,8 +5,12 @@ import { ChevronRight, Plus } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ClienteForm } from '@/components/admin/cliente-form'
+import { ClienteAcessoPanel } from '@/components/admin/cliente-acesso-panel'
+import { ClienteArquivarBtn } from '@/components/admin/cliente-arquivar-btn'
 import { ServicoForm } from '@/components/admin/servico-form'
-import { STATUS_PROCESSO_LABEL, STATUS_SERVICO_LABEL } from '@/lib/types'
+import { Badge } from '@/components/ui/badge'
+import { ProcessoCard } from '@/components/shared/processo-card'
+import { STATUS_SERVICO_LABEL } from '@/lib/types'
 import type { Cliente, Processo, ServicoContratado } from '@/lib/types'
 
 interface Props {
@@ -29,21 +33,18 @@ export default async function ClienteDetailPage({ params }: Props) {
   const ps = (processos ?? []) as Processo[]
   const ss = (servicos ?? []) as ServicoContratado[]
 
-  const STATUS_COR: Record<string, string> = {
-    triagem: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-    em_analise: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-    distribuido: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-    em_andamento: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-    concluido: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-  }
-
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm text-muted-foreground">
-        <Link href="/admin/clientes" className="hover:text-foreground">Clientes</Link>
+        <Link href={c.arquivado ? '/admin/clientes?ver=arquivados' : '/admin/clientes'} className="hover:text-foreground">
+          Clientes
+        </Link>
         <ChevronRight className="h-3.5 w-3.5" />
         <span className="text-foreground font-medium">{c.nome}</span>
+        {c.arquivado && (
+          <Badge variant="secondary" className="ml-1 text-[10px]">Arquivado</Badge>
+        )}
       </nav>
 
       <Tabs defaultValue="dados">
@@ -54,34 +55,35 @@ export default async function ClienteDetailPage({ params }: Props) {
         </TabsList>
 
         {/* ABA DADOS */}
-        <TabsContent value="dados" className="mt-6 max-w-lg">
+        <TabsContent value="dados" className="mt-6 max-w-2xl space-y-6">
+          {c.arquivado && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+              Este cliente está arquivado e não aparece na listagem principal.
+            </div>
+          )}
           <ClienteForm cliente={c} />
+          {!c.arquivado && <ClienteAcessoPanel cliente={c} />}
+          <ClienteArquivarBtn cliente={c} />
         </TabsContent>
 
         {/* ABA PROCESSOS */}
         <TabsContent value="processos" className="mt-6 space-y-4">
+          {!c.arquivado && (
           <div className="flex justify-end">
             <Link href={`/admin/clientes/${id}/processos/novo`} className={buttonVariants({ size: 'sm' })}>
               <Plus className="h-4 w-4 mr-1" />
               Novo processo
             </Link>
           </div>
+          )}
           {ps.length > 0 ? (
-            <div className="rounded-lg border divide-y">
+            <div className="space-y-3">
               {ps.map((p) => (
-                <Link
+                <ProcessoCard
                   key={p.id}
+                  processo={p}
                   href={`/admin/clientes/${id}/processos/${p.id}`}
-                  className="flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{p.tipo_servico}</p>
-                    {p.numero_cnj && <p className="text-xs text-muted-foreground mt-0.5 font-mono">{p.numero_cnj}</p>}
-                  </div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COR[p.status_interno]}`}>
-                    {STATUS_PROCESSO_LABEL[p.status_interno]}
-                  </span>
-                </Link>
+                />
               ))}
             </div>
           ) : (

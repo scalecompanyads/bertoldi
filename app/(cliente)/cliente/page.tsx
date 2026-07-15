@@ -1,16 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import Link from 'next/link'
-import { ChevronRight, FileText } from 'lucide-react'
-import { STATUS_PROCESSO_LABEL } from '@/lib/types'
+import { FileText } from 'lucide-react'
+import { ProcessoCard } from '@/components/shared/processo-card'
 import type { Processo } from '@/lib/types'
-
-const STATUS_COR: Record<string, string> = {
-  triagem: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
-  em_analise: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  distribuido: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-  em_andamento: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-  concluido: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
-}
 
 export default async function ClienteHomePage() {
   const supabase = await createClient()
@@ -42,34 +33,37 @@ export default async function ClienteHomePage() {
 
   const ps = (processos ?? []) as Processo[]
 
+  // Última verificação de cada processo + indicador de movimentação nova
+  const comNovidade = new Set<string>()
+  const ultimaVerificacao = new Map<string, string>()
+  if (ps.length > 0) {
+    const { data: verificacoes } = await supabase
+      .from('verificacoes_datajud')
+      .select('processo_id, houve_movimentacao, verificado_em')
+      .in('processo_id', ps.map((p) => p.id))
+      .order('verificado_em', { ascending: false })
+
+    for (const v of verificacoes ?? []) {
+      if (ultimaVerificacao.has(v.processo_id)) continue
+      ultimaVerificacao.set(v.processo_id, v.verificado_em)
+      if (v.houve_movimentacao) comNovidade.add(v.processo_id)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-semibold">Meus processos</h1>
+      <h1 className="text-2xl font-semibold">Meus processos</h1>
 
       {ps.length > 0 ? (
         <div className="space-y-3">
           {ps.map((p) => (
-            <Link
+            <ProcessoCard
               key={p.id}
+              processo={p}
               href={`/cliente/processos/${p.id}`}
-              className="flex items-center gap-4 rounded-xl border bg-card p-4 hover:bg-accent transition-colors"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{p.tipo_servico}</p>
-                {p.numero_cnj && (
-                  <p className="text-xs font-mono text-muted-foreground mt-0.5 truncate">{p.numero_cnj}</p>
-                )}
-                {p.tribunal && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{p.tribunal}</p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COR[p.status_interno]}`}>
-                  {STATUS_PROCESSO_LABEL[p.status_interno]}
-                </span>
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </Link>
+              ultimaVerificacao={ultimaVerificacao.get(p.id)}
+              novidade={comNovidade.has(p.id)}
+            />
           ))}
         </div>
       ) : (

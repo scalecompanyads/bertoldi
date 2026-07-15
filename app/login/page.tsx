@@ -13,7 +13,7 @@ export default function LoginPage() {
           </div>
           <div className="text-center space-y-1">
             <h1 className="text-xl font-bold tracking-tight">Bertoldi Advocacia</h1>
-            <p className="text-sm text-muted-foreground">Acesse sua conta para continuar</p>
+            <p className="text-sm text-muted-foreground">Clientes entram com CPF · equipe com e-mail</p>
           </div>
         </div>
         <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
