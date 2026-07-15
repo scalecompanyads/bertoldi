@@ -5,6 +5,8 @@ import { RefreshCw, AlertCircle, Info, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { analisarAndamento } from '@/lib/actions/verificar-processo'
 import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
+import { ProcessoCapa } from '@/components/shared/processo-capa'
+import type { DatajudCapa } from '@/lib/datajud'
 
 interface Props {
   processoId: string
@@ -13,7 +15,9 @@ interface Props {
 
 interface Movimento {
   data: string
+  hora?: string
   descricao: string
+  orgao?: string
 }
 
 interface Resultado {
@@ -21,6 +25,7 @@ interface Resultado {
   houve_movimentacao: boolean
   ultimoAndamento?: string
   movimentos?: Movimento[]
+  capa?: DatajudCapa
   fonte?: string
   doCache?: boolean
   verificadoEm?: string
@@ -50,6 +55,7 @@ export function VerificarDatajudBtn({ processoId, autoFetch = false }: Props) {
         houve_movimentacao: res.houve_movimentacao ?? false,
         ultimoAndamento: res.ultimoAndamento,
         movimentos: res.movimentos,
+        capa: res.capa,
         fonte: res.fonte,
         doCache: res.doCache,
         verificadoEm: res.verificadoEm,
@@ -127,6 +133,9 @@ export function VerificarDatajudBtn({ processoId, autoFetch = false }: Props) {
               </div>
             </div>
           </div>
+
+          {/* Dados de capa do processo */}
+          {resultado.capa && <ProcessoCapa capa={resultado.capa} />}
 
           {/* Timeline de movimentações */}
           {resultado.movimentos && resultado.movimentos.length > 0 ? (

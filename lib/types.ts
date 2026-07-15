@@ -9,6 +9,8 @@ export interface Usuario {
   nome: string
   email: string
   papel: PapelUsuario
+  oab_numero: string | null
+  oab_uf: string | null
   criado_em: string
 }
 
@@ -51,6 +53,7 @@ export interface Processo {
   valor_causa: number | null
   data_ajuizamento: string | null
   cidade_origem: string | null
+  notificar_cliente: boolean
   status_interno: StatusProcesso
   data_contratacao: string
   criado_em: string
@@ -149,4 +152,34 @@ export interface Comunicado {
   enviado_em: string
   lido: boolean
   cliente?: Pick<Cliente, 'id' | 'nome'> | null
+}
+
+export type StatusIntimacao = 'nao_lida' | 'lida' | 'tratada'
+
+export interface Intimacao {
+  id: string
+  comunica_id: number
+  advogado_id: string | null
+  processo_id: string | null
+  numero_cnj: string | null
+  sigla_tribunal: string | null
+  tipo_comunicacao: string | null
+  nome_orgao: string | null
+  nome_classe: string | null
+  meio: string | null
+  link: string | null
+  texto: string | null
+  data_disponibilizacao: string
+  status: StatusIntimacao
+  criado_em: string
+  advogado?: Pick<Usuario, 'id' | 'nome'> | null
+  processo?: (Pick<Processo, 'id' | 'cliente_id' | 'tipo_servico'> & {
+    clientes?: Pick<Cliente, 'id' | 'nome'>
+  }) | null
+}
+
+export const STATUS_INTIMACAO_LABEL: Record<StatusIntimacao, string> = {
+  nao_lida: 'Não lida',
+  lida: 'Lida',
+  tratada: 'Tratada',
 }

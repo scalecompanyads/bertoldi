@@ -5,6 +5,8 @@ import { ChevronLeft, FileText, MessageCircle, Landmark } from 'lucide-react'
 import { STATUS_PROCESSO_LABEL, TIPO_DOCUMENTO_LABEL } from '@/lib/types'
 import { DocumentoDownloadBtn } from '@/components/cliente/documento-download-btn'
 import { AnalisarAndamentoBtn } from '@/components/cliente/analisar-andamento-btn'
+import { ProcessoCapa } from '@/components/shared/processo-capa'
+import type { DatajudCapa } from '@/lib/datajud'
 import { ProcessoEtapas } from '@/components/cliente/processo-etapas'
 import type { Processo, EventoLinhaDotTempo, Documento, Observacao, StatusProcesso } from '@/lib/types'
 
@@ -74,6 +76,8 @@ export default async function ProcessoClientePage({ params }: Props) {
   // ---- Linha do tempo unificada: eventos do escritório + movimentos do tribunal ----
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const movs = ((ultimaVerificacao?.raw_response as any)?.movimentos ?? []) as { data: string; descricao: string }[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const capa = ((ultimaVerificacao?.raw_response as any)?.capa ?? null) as DatajudCapa | null
 
   const jaPublicado = new Set(evs.map((ev) => `${ev.data_evento}|${ev.descricao}`))
 
@@ -130,6 +134,9 @@ export default async function ProcessoClientePage({ params }: Props) {
           Contratado em {new Date(p.data_contratacao + 'T12:00:00').toLocaleDateString('pt-BR')}
         </p>
       </div>
+
+      {/* Dados de capa registrados no tribunal */}
+      {capa && <ProcessoCapa capa={capa} />}
 
       {/* O que acontece agora */}
       <div className="rounded-xl border bg-primary/5 border-primary/20 p-4 space-y-1">

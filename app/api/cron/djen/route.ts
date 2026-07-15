@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server'
-import { verificarTodosProcessos } from '@/lib/actions/verificar-processo'
+import { sincronizarIntimacoes } from '@/lib/actions/intimacoes'
 
-// A API do Datajud pode levar 30s+ por consulta — o job precisa de tempo para
-// percorrer todos os processos ativos (limite do plano Vercel se aplica)
+// Vários advogados × várias páginas da API — precisa de folga
 export const maxDuration = 300
 
 export async function GET(req: Request) {
@@ -14,8 +13,9 @@ export async function GET(req: Request) {
   }
 
   try {
-    const resultado = await verificarTodosProcessos()
-    return NextResponse.json({ ok: true, ...resultado })
+    // 5 dias retroativos: cobre fim de semana e eventuais falhas de execução
+    const resultado = await sincronizarIntimacoes(5)
+    return NextResponse.json(resultado, { status: resultado.error ? 500 : 200 })
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro desconhecido'
     return NextResponse.json({ error: msg }, { status: 500 })

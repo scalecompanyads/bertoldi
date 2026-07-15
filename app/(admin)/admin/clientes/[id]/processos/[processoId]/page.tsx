@@ -12,6 +12,8 @@ import { DocumentoUpload, DocumentoItem } from '@/components/admin/documento-upl
 import { TribunalBadge } from '@/components/admin/tribunal-badge'
 import { VerificarDatajudBtn } from '@/components/admin/verificar-datajud-btn'
 import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
+import { ProcessoCapa } from '@/components/shared/processo-capa'
+import type { DatajudCapa } from '@/lib/datajud'
 import { AutoScrollTo } from '@/components/shared/auto-scroll-to'
 import { STATUS_PROCESSO_LABEL } from '@/lib/types'
 import type { Processo, Cliente, EventoLinhaDotTempo, Observacao, Documento, Usuario } from '@/lib/types'
@@ -206,7 +208,9 @@ export default async function ProcessoDetailPage({ params }: Props) {
             {/* Última verificação */}
             {ultimaVerificacao ? (() => {
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const movs = (ultimaVerificacao.raw_response as any)?.movimentos as { data: string; descricao: string }[] | undefined
+              const raw = ultimaVerificacao.raw_response as any
+              const movs = raw?.movimentos as { data: string; hora?: string; descricao: string; orgao?: string }[] | undefined
+              const capa = raw?.capa as DatajudCapa | null | undefined
               return (
                 <div className="space-y-3">
                   {/* Status */}
@@ -231,6 +235,9 @@ export default async function ProcessoDetailPage({ params }: Props) {
                       </p>
                     </div>
                   </div>
+
+                  {/* Dados de capa do processo */}
+                  {capa && <ProcessoCapa capa={capa} />}
 
                   {/* Timeline */}
                   {movs && movs.length > 0 ? (

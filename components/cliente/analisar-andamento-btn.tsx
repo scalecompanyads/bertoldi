@@ -5,10 +5,14 @@ import { RefreshCw, CheckCircle2, Clock } from 'lucide-react'
 import { toast } from 'sonner'
 import { analisarAndamento } from '@/lib/actions/verificar-processo'
 import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
+import { ProcessoCapa } from '@/components/shared/processo-capa'
+import type { DatajudCapa } from '@/lib/datajud'
 
 interface Movimento {
   data: string
+  hora?: string
   descricao: string
+  orgao?: string
 }
 
 export function AnalisarAndamentoBtn({
@@ -20,6 +24,7 @@ export function AnalisarAndamentoBtn({
 }) {
   const [loading, setLoading] = useState(false)
   const [movimentos, setMovimentos] = useState<Movimento[] | null>(null)
+  const [capa, setCapa] = useState<DatajudCapa | null>(null)
   const [ultimoAndamento, setUltimoAndamento] = useState<string | null>(null)
   const [novo, setNovo] = useState(false)
   const [verificadoEm, setVerificadoEm] = useState<string | null>(null)
@@ -39,6 +44,7 @@ export function AnalisarAndamentoBtn({
       toast.error(res.error)
     } else if (res.ok) {
       setMovimentos(res.movimentos ?? null)
+      setCapa(res.capa ?? null)
       setUltimoAndamento(res.ultimoAndamento ?? null)
       setNovo(res.houve_movimentacao ?? false)
       setVerificadoEm(res.verificadoEm ?? null)
@@ -107,6 +113,9 @@ export function AnalisarAndamentoBtn({
               )}
             </div>
           </div>
+
+          {/* Dados de capa do processo */}
+          {capa && <ProcessoCapa capa={capa} />}
 
           {/* Timeline de movimentações */}
           {movimentos && movimentos.length > 0 ? (

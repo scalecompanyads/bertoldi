@@ -38,6 +38,7 @@ export async function criarProcesso(clienteId: string, formData: FormData) {
     status_interno: formData.get('status_interno') as string || 'triagem',
     data_contratacao: formData.get('data_contratacao') as string,
     responsavel_id: (formData.get('responsavel_id') as string) || null,
+    notificar_cliente: formData.get('notificar_cliente') === 'true',
     ...camposCapa(formData),
   }).select('id').single()
 
@@ -59,6 +60,7 @@ export async function atualizarProcesso(id: string, clienteId: string, formData:
     status_interno: formData.get('status_interno') as string,
     data_contratacao: formData.get('data_contratacao') as string,
     responsavel_id: (formData.get('responsavel_id') as string) || null,
+    notificar_cliente: formData.get('notificar_cliente') === 'true',
     ...camposCapa(formData),
     atualizado_em: new Date().toISOString(),
     atualizado_por: user.id,

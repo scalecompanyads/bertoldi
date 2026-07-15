@@ -15,7 +15,7 @@ const ESAJ_BASES: Record<string, string> = {
 export interface ScraperResult {
   encontrado: boolean
   ultimoAndamento?: string
-  movimentos?: { data: string; descricao: string }[]
+  movimentos?: { data: string; hora?: string; descricao: string; orgao?: string }[]
   erro?: string
 }
 

@@ -2,11 +2,12 @@
 // Docs: https://datajud-wiki.cnj.jus.br/api-publica/
 
 const BASE_URL = 'https://api-publica.datajud.cnj.jus.br'
-const API_KEY = process.env.DATAJUD_API_KEY ?? 'cDZHYzlZa0JadVREZDJCendFbzVlQTU2S3A1djVuT3A='
+// Chave pública documentada na wiki (pode ser rotacionada pelo CNJ — prefira a env var)
+const API_KEY = process.env.DATAJUD_API_KEY ?? 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=='
 
-// Tribunais com cobertura confirmada no Datajud (enviam dados via PJe ou integração direta)
-// TJs que usam eSAJ (TJSP, TJSC, TJBA, TJCE, TJAM, TJMS, TJAL, TJRN, TJAC) NÃO estão cobertos
-// TJRJ e TJRS usam sistemas próprios — também sem cobertura
+// Tribunais com cobertura confirmada no Datajud (enviam dados via PJe, eProc ou integração direta)
+// TJSC, TJRS e TJRJ migraram para o eProc e enviam dados ao Datajud
+// (verificado em 15/07/2026: api_publica_tjsc com atualização de 13/07/2026)
 const COBERTOS = new Set([
   // Superiores
   'stf', 'stj', 'tst', 'tse', 'stm',
@@ -23,19 +24,19 @@ const COBERTOS = new Set([
   // TJs que usam PJe (cobertura confirmada)
   'tjal', 'tjam', 'tjap', 'tjdft', 'tjgo', 'tjma', 'tjmg', 'tjmt', 'tjpa',
   'tjpb', 'tjpe', 'tjpi', 'tjpr', 'tjrn', 'tjro', 'tjrr', 'tjse', 'tjto', 'tjes',
+  // TJs que usam eProc (cobertura confirmada)
+  'tjsc', 'tjrs', 'tjrj',
   // Variantes 2g e eproc apontam para o mesmo índice
   'tjmgeproc', 'tjmg2g',
 ])
 
 // TJs fora do Datajud (eSAJ ou sistema próprio)
 // Nota: tjspeproc (seq >= 4M) usa eProc e SIM envia dados ao Datajud — não está aqui
+// Nota: tjsc, tjrs e tjrj migraram para o eProc e passaram a ter cobertura — removidos daqui
 const NAO_COBERTOS: Record<string, string> = {
   tjsp: 'eSAJ (esaj.tjsp.jus.br)',
-  tjsc: 'eSAJ (esaj.tjsc.jus.br)',
   tjba: 'eSAJ (esaj.tjba.jus.br)',
   tjce: 'eSAJ (esaj.tjce.jus.br)',
-  tjrj: 'Sistema próprio (tjrj.jus.br)',
-  tjrs: 'Sistema próprio (tjrs.jus.br)',
   tjms: 'eSAJ (esaj.tjms.jus.br)',
   tjal: 'eSAJ (tjal.jus.br)',
   tjrn: 'eSAJ (tjrn.jus.br)',
@@ -69,35 +70,86 @@ export function getDatajudIndex(tribunalId: string): string {
   // Normaliza variantes (tjsp2g → tjsp, tjmgeproc → tjmg, tjsp-e → tjsp)
   const base = tribunalId.replace(/2g$/, '').replace(/eproc$/, '').replace(/-e$/, '')
   const id = JF_PARA_TRF[base] ?? base
-  return `api_${id}_index`
+  // Alias oficial da API pública: https://datajud-wiki.cnj.jus.br/api-publica/endpoints
+  return `api_publica_${id}`
 }
 
 export interface DatajudMovimento {
   codigo: number
   nome: string
   dataHora: string
-  complementosTabelados?: { codigo: number; nome: string; valor: string }[]
+  // `nome` é o valor legível (ex: "para julgamento"); `valor` é o código numérico
+  complementosTabelados?: { codigo: number; nome?: string; valor?: number | string; descricao?: string }[]
+  orgaoJulgador?: { codigo: number | string; nome: string }
 }
 
 export interface DatajudProcesso {
   id: string
   numeroProcesso: string
   classe?: { codigo: number; nome: string }
+  assuntos?: { codigo: number; nome: string }[]
   sistema?: { codigo: number; nome: string }
+  formato?: { codigo: number; nome: string }
   tribunal?: string
+  grau?: string
+  dataAjuizamento?: string
+  nivelSigilo?: number
   dataHoraUltimaAtualizacao?: string
   movimentos?: DatajudMovimento[]
   orgaoJulgador?: { codigo: number; nome: string; codigoMunicipioIBGE?: number }
 }
 
+// Movimento formatado para exibição. `data` fica sem hora de propósito:
+// mesmoAndamento() ignora datas dd/mm/aaaa mas não horários, então a hora
+// entra em campo separado para não gerar falso houve_movimentacao.
+export interface Movimento {
+  data: string
+  hora?: string
+  descricao: string
+  orgao?: string
+}
+
+// Dados de capa do processo conforme registrados no tribunal
+export interface DatajudCapa {
+  numeroProcesso?: string
+  classe?: string
+  assuntos?: string[]
+  orgaoJulgador?: string
+  tribunal?: string
+  grau?: string
+  sistema?: string
+  formato?: string
+  dataAjuizamento?: string
+  nivelSigilo?: number
+  ultimaAtualizacao?: string
+}
+
 export interface DatajudResult {
   encontrado: boolean
   processo?: DatajudProcesso
+  capa?: DatajudCapa
   ultimoAndamento?: string
-  movimentos?: { data: string; descricao: string }[]
+  movimentos?: Movimento[]
   dataUltimaAtualizacao?: string
   rawResponse?: unknown
   erro?: string
+}
+
+const GRAU_LEGIVEL: Record<string, string> = {
+  G1: '1º Grau',
+  G2: '2º Grau',
+  GS: 'Instância Superior',
+  JE: 'Juizado Especial',
+  TR: 'Turma Recursal',
+  TRU: 'Turma Regional de Uniformização',
+  TNU: 'Turma Nacional de Uniformização',
+  SUP: 'Instância Superior',
+}
+
+// Datajud registra dataAjuizamento como "aaaammddhhmmss"
+function formatarDataAjuizamento(raw?: string): string | undefined {
+  const m = raw?.match(/^(\d{4})(\d{2})(\d{2})/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : undefined
 }
 
 export async function consultarDatajud(
@@ -107,10 +159,13 @@ export async function consultarDatajud(
   const index = getDatajudIndex(tribunalId)
   const url = `${BASE_URL}/${index}/_search`
 
+  // O Datajud armazena numeroProcesso apenas com dígitos (sem pontuação CNJ)
+  const numeroLimpo = numeroCNJ.replace(/\D/g, '')
+
   // Query simplificada — sem sort para evitar rejeição de campos não mapeados
   const body = {
     query: {
-      match: { numeroProcesso: numeroCNJ },
+      match: { numeroProcesso: numeroLimpo },
     },
     size: 1,
   }
@@ -126,7 +181,8 @@ export async function consultarDatajud(
       body: JSON.stringify(body),
       // Sem cache — sempre buscar dado fresco
       cache: 'no-store',
-      signal: AbortSignal.timeout(15_000),
+      // A API pública é lenta em índices grandes (30s+ observados) — timeout generoso
+      signal: AbortSignal.timeout(60_000),
     })
 
     rawResponse = await res.json()
@@ -144,34 +200,55 @@ export async function consultarDatajud(
       return { encontrado: false, erro, rawResponse }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = rawResponse as any
-    const hits: DatajudProcesso[] = data?.hits?.hits?.map((h: any) => h._source) ?? []
+    const data = rawResponse as { hits?: { hits?: { _source: DatajudProcesso }[] } }
+    const hits: DatajudProcesso[] = data?.hits?.hits?.map(h => h._source) ?? []
 
     if (hits.length === 0) {
       return { encontrado: false, rawResponse }
     }
 
     const processo = hits[0]
-    const movimentosRaw: DatajudMovimento[] = processo.movimentos ?? []
+    // A ordem dos movimentos no índice não é garantida — ordena do mais recente ao mais antigo
+    const movimentosRaw: DatajudMovimento[] = [...(processo.movimentos ?? [])].sort(
+      (a, b) => new Date(b.dataHora ?? 0).getTime() - new Date(a.dataHora ?? 0).getTime()
+    )
 
-    const movimentos = movimentosRaw.slice(0, 15).map(m => {
-      const data = m.dataHora
-        ? new Date(m.dataHora).toLocaleDateString('pt-BR')
-        : ''
+    // Horário oficial do processo é o de Brasília — o servidor pode rodar em UTC
+    const TZ = 'America/Sao_Paulo'
+    const movimentos: Movimento[] = movimentosRaw.map(m => {
+      const dt = m.dataHora ? new Date(m.dataHora) : null
+      const data = dt ? dt.toLocaleDateString('pt-BR', { timeZone: TZ }) : ''
+      const hora = dt
+        ? dt.toLocaleTimeString('pt-BR', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })
+        : undefined
       const complemento = m.complementosTabelados?.length
-        ? ` — ${m.complementosTabelados.map(c => c.valor).join(', ')}`
+        ? ` — ${m.complementosTabelados.map(c => c.nome ?? c.valor).filter(Boolean).join(', ')}`
         : ''
-      return { data, descricao: m.nome + complemento }
+      return { data, hora, descricao: m.nome + complemento, orgao: m.orgaoJulgador?.nome }
     })
 
     const ultimoAndamento = movimentos[0]
       ? `${movimentos[0].data} — ${movimentos[0].descricao}`
       : undefined
 
+    const capa: DatajudCapa = {
+      numeroProcesso: processo.numeroProcesso,
+      classe: processo.classe?.nome,
+      assuntos: (processo.assuntos ?? []).map(a => a.nome).filter(Boolean),
+      orgaoJulgador: processo.orgaoJulgador?.nome,
+      tribunal: processo.tribunal,
+      grau: processo.grau ? (GRAU_LEGIVEL[processo.grau] ?? processo.grau) : undefined,
+      sistema: processo.sistema?.nome,
+      formato: processo.formato?.nome,
+      dataAjuizamento: formatarDataAjuizamento(processo.dataAjuizamento),
+      nivelSigilo: processo.nivelSigilo,
+      ultimaAtualizacao: processo.dataHoraUltimaAtualizacao,
+    }
+
     return {
       encontrado: true,
       processo,
+      capa,
       ultimoAndamento,
       movimentos,
       dataUltimaAtualizacao: processo.dataHoraUltimaAtualizacao,

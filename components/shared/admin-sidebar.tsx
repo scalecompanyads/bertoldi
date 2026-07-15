@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, LayoutDashboard, LogOut, Scale, Bell, Briefcase, Search, SquareKanban } from 'lucide-react'
+import { Users, LayoutDashboard, LogOut, Scale, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -10,10 +10,12 @@ import { useState } from 'react'
 
 const NAV = [
   { href: '/admin', label: 'Painel', icon: LayoutDashboard, exact: true },
+  { href: '/admin/intimacoes', label: 'Intimações', icon: Inbox, exact: false },
   { href: '/admin/processos', label: 'Processos', icon: Briefcase, exact: false },
   { href: '/admin/clientes', label: 'Clientes', icon: Users, exact: false },
   { href: '/admin/comunicados', label: 'Comunicados', icon: Bell, exact: false },
   { href: '/admin/tarefas', label: 'Minhas tarefas', icon: SquareKanban, exact: false },
+  { href: '/admin/equipe', label: 'Equipe', icon: UserCog, exact: false },
 ]
 
 export function AdminSidebar() {

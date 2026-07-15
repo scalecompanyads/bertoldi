@@ -1,10 +1,13 @@
 import { scrapeEsaj, isEsajTribunal, type ScraperResult } from './esaj'
-import { consultarDatajud } from '@/lib/datajud'
+import { consultarDatajud, type DatajudCapa } from '@/lib/datajud'
 
 export type { ScraperResult }
+export type { DatajudCapa }
 
 export interface AnaliseResult extends ScraperResult {
   fonte: 'esaj' | 'datajud' | 'erro'
+  /** Dados de capa do processo (apenas quando a fonte é o Datajud) */
+  capa?: DatajudCapa
 }
 
 // Tribunais que usam eProc e NÃO devem ir ao eSAJ — vai direto ao Datajud
@@ -55,7 +58,9 @@ export async function analisarProcesso(
       return { encontrado: false, fonte: 'esaj', erro: r.erro }
     }
 
-    // Não encontrado no eSAJ
+    // Não encontrado no eSAJ → pode tramitar no eProc (ex: TJSC migrou) → tenta Datajud
+    const djFallback = await tentarDatajud(numeroCNJ, tribunalId)
+    if (djFallback) return djFallback
     return { encontrado: false, fonte: 'esaj' }
   }
 
@@ -82,6 +87,7 @@ async function tentarDatajud(
       encontrado: true,
       ultimoAndamento: result.ultimoAndamento,
       movimentos: result.movimentos,
+      capa: result.capa,
       fonte: 'datajud',
     }
   }

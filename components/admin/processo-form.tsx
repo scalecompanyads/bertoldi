@@ -23,6 +23,7 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState(processo?.status_interno ?? 'triagem')
   const [responsavel, setResponsavel] = useState(processo?.responsavel_id ?? '')
+  const [notificarCliente, setNotificarCliente] = useState(processo?.notificar_cliente ?? false)
   const [numeroCNJ, setNumeroCNJ] = useState(processo?.numero_cnj ?? '')
   const [tribunal, setTribunal] = useState(processo?.tribunal ?? '')
 
@@ -57,6 +58,7 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
     fd.set('responsavel_id', responsavel)
     fd.set('numero_cnj', numeroCNJ)
     fd.set('tribunal', tribunal)
+    fd.set('notificar_cliente', notificarCliente ? 'true' : 'false')
 
     const result = processo
       ? await atualizarProcesso(processo.id, clienteId, fd)
@@ -182,6 +184,20 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
           </Select>
         </div>
       )}
+      <label className="flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={notificarCliente}
+          onChange={(e) => setNotificarCliente(e.target.checked)}
+          className="mt-0.5 h-4 w-4 accent-primary"
+        />
+        <span className="space-y-0.5">
+          <span className="block text-sm font-medium">Notificar cliente por e-mail</span>
+          <span className="block text-xs text-muted-foreground">
+            Envia um aviso automático ao cliente sempre que um andamento visível for publicado neste processo.
+          </span>
+        </span>
+      </label>
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={loading}>
           {loading ? 'Salvando...' : processo ? 'Salvar alterações' : 'Cadastrar processo'}
