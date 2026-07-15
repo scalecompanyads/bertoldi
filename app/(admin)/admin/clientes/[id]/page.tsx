@@ -23,7 +23,7 @@ export default async function ClienteDetailPage({ params }: Props) {
 
   const [{ data: cliente }, { data: processos }, { data: servicos }] = await Promise.all([
     supabase.from('clientes').select('*').eq('id', id).single(),
-    supabase.from('processos').select('*').eq('cliente_id', id).order('criado_em', { ascending: false }),
+    supabase.from('processos').select('*, responsavel:responsavel_id(id, nome)').eq('cliente_id', id).order('criado_em', { ascending: false }),
     supabase.from('servicos_contratados').select('*').eq('cliente_id', id).order('data_contratacao', { ascending: false }),
   ])
 

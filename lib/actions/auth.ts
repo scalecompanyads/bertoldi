@@ -4,6 +4,14 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isValidCpf, normalizeCpfDigits } from '@/lib/cpf'
 
+function supabaseConnectionError(message?: string) {
+  if (!message) return null
+  if (/fetch failed|enotfound|econnrefused|network/i.test(message)) {
+    return 'Não foi possível conectar ao Supabase. Verifique NEXT_PUBLIC_SUPABASE_URL e as chaves no .env.local e reinicie o servidor.'
+  }
+  return null
+}
+
 export async function loginAsCliente(identifier: string, password: string) {
   const trimmed = identifier.trim()
   if (!trimmed || !password) {
@@ -24,7 +32,11 @@ export async function loginAsCliente(identifier: string, password: string) {
     const { data, error } = await admin.rpc('get_cliente_auth_email', { cpf_input: cpf })
 
     if (error) {
-      return { error: 'Não foi possível verificar o CPF. Tente novamente.' }
+      return {
+        error:
+          supabaseConnectionError(error.message) ??
+          'Não foi possível verificar o CPF. Tente novamente.',
+      }
     }
 
     email = data ?? null
@@ -41,7 +53,10 @@ export async function loginAsCliente(identifier: string, password: string) {
   })
 
   if (authError || !authData.user) {
-    return { error: 'CPF ou senha incorretos.' }
+    return {
+      error:
+        supabaseConnectionError(authError?.message) ?? 'CPF ou senha incorretos.',
+    }
   }
 
   const { data: usuario } = await supabase

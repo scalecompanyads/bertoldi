@@ -27,7 +27,7 @@ export default async function ClienteHomePage() {
 
   const { data: processos } = await supabase
     .from('processos')
-    .select('*')
+    .select('*, responsavel:responsavel_id(id, nome)')
     .eq('cliente_id', cliente.id)
     .order('criado_em', { ascending: false })
 

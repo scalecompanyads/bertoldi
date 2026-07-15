@@ -87,6 +87,9 @@ export function ProcessoCard({ processo: p, href, ultimaVerificacao, novidade, c
   if (tribunal) detalhes.push({ label: 'Origem', valor: tribunal })
   if (p.assunto) detalhes.push({ label: 'Assunto', valor: p.assunto })
   if (p.valor_causa != null) detalhes.push({ label: 'Valor da causa', valor: formatarValorCausa(p.valor_causa) })
+  if (p.responsavel?.nome) {
+    detalhes.push({ label: 'Advogado(a) responsável', valor: p.responsavel.nome })
+  }
   if (ultimaVerificacao) detalhes.push({ label: 'Última verificação', valor: tempoRelativo(ultimaVerificacao) })
 
   return (

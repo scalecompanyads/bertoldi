@@ -96,7 +96,14 @@ function EquipeLoginForm() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      toast.error('Email ou senha incorretos.')
+      const connectionError = /fetch failed|enotfound|econnrefused|network/i.test(
+        error.message
+      )
+      toast.error(
+        connectionError
+          ? 'Não foi possível conectar ao Supabase. Verifique o .env.local e reinicie o servidor.'
+          : 'Email ou senha incorretos.'
+      )
       setLoading(false)
       return
     }
