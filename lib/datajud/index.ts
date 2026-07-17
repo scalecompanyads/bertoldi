@@ -2,8 +2,9 @@
 // Docs: https://datajud-wiki.cnj.jus.br/api-publica/
 
 const BASE_URL = 'https://api-publica.datajud.cnj.jus.br'
-// Chave pública documentada na wiki (pode ser rotacionada pelo CNJ — prefira a env var)
-const API_KEY = process.env.DATAJUD_API_KEY ?? 'cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw=='
+// Chave pública do CNJ, documentada em https://datajud-wiki.cnj.jus.br/api-publica/acesso
+// Configure em DATAJUD_API_KEY (.env.local / Vercel) — o CNJ rotaciona a chave periodicamente
+const API_KEY = process.env.DATAJUD_API_KEY ?? ''
 
 // Tribunais com cobertura confirmada no Datajud (enviam dados via PJe, eProc ou integração direta)
 // TJSC, TJRS e TJRJ migraram para o eProc e enviam dados ao Datajud
@@ -156,6 +157,13 @@ export async function consultarDatajud(
   numeroCNJ: string,
   tribunalId: string
 ): Promise<DatajudResult> {
+  if (!API_KEY) {
+    return {
+      encontrado: false,
+      erro: 'DATAJUD_API_KEY não configurada. Copie a chave pública da wiki do Datajud para o .env.local (ou variáveis da Vercel).',
+    }
+  }
+
   const index = getDatajudIndex(tribunalId)
   const url = `${BASE_URL}/${index}/_search`
 
