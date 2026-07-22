@@ -53,6 +53,7 @@ export interface Processo {
   valor_causa: number | null
   data_ajuizamento: string | null
   cidade_origem: string | null
+  calendario_forense_id: string | null
   notificar_cliente: boolean
   status_interno: StatusProcesso
   data_contratacao: string
@@ -131,10 +132,64 @@ export interface Tarefa {
   prazo: string | null
   ordem: number
   concluida_em: string | null
+  prazo_contexto: PrazoContexto | null
   criado_em: string
   processo?: Pick<Processo, 'id' | 'cliente_id' | 'numero_cnj' | 'tipo_servico'> & {
     clientes?: Pick<Cliente, 'id' | 'nome'>
   } | null
+}
+
+export interface PrazoContexto {
+  calendario_id: string | null
+  versao_id: string | null
+  versao: number | null
+  calendario_nome: string
+  fonte_url: string | null
+  dias_uteis: number
+  vencimento_sugerido: string | null
+  ajuste_manual: boolean
+}
+
+export type EscopoCalendario = 'estadual' | 'municipal' | 'tribunal' | 'comarca'
+export type StatusVersaoCalendario = 'rascunho' | 'publicado' | 'substituido'
+export type TipoDiaNaoUtil = 'feriado_estadual' | 'feriado_municipal' | 'recesso' | 'suspensao' | 'ponto_facultativo'
+
+export interface CalendarioForenseDia {
+  id: string
+  versao_id: string
+  data_inicio: string
+  data_fim: string
+  tipo: TipoDiaNaoUtil
+  descricao: string
+  criado_em: string
+}
+
+export interface CalendarioForenseVersao {
+  id: string
+  calendario_id: string
+  versao: number
+  status: StatusVersaoCalendario
+  vigencia_inicio: string
+  vigencia_fim: string
+  fonte_url: string
+  fonte_descricao: string
+  criado_em: string
+  publicado_em: string | null
+  dias?: CalendarioForenseDia[]
+}
+
+export interface CalendarioForense {
+  id: string
+  nome: string
+  escopo: EscopoCalendario
+  uf: string
+  comarca: string | null
+  tribunal: string | null
+  ativo: boolean
+  versao_ativa_id: string | null
+  criado_em: string
+  versao_ativa?: CalendarioForenseVersao | null
+  versoes?: CalendarioForenseVersao[]
 }
 
 export const STATUS_TAREFA_LABEL: Record<StatusTarefa, string> = {
@@ -150,8 +205,17 @@ export interface Comunicado {
   titulo: string
   mensagem: string
   enviado_em: string
-  lido: boolean
+  lido: boolean // legado; novas leituras ficam em ComunicadoDestinatario.lido_em
   cliente?: Pick<Cliente, 'id' | 'nome'> | null
+}
+
+export interface ComunicadoDestinatario {
+  comunicado_id: string
+  cliente_id: string
+  lido_em: string | null
+  email_enviado_em: string | null
+  criado_em: string
+  comunicado?: Comunicado
 }
 
 export type StatusIntimacao = 'nao_lida' | 'lida' | 'tratada'
@@ -173,8 +237,9 @@ export interface Intimacao {
   status: StatusIntimacao
   criado_em: string
   advogado?: Pick<Usuario, 'id' | 'nome'> | null
-  processo?: (Pick<Processo, 'id' | 'cliente_id' | 'tipo_servico'> & {
+  processo?: (Pick<Processo, 'id' | 'cliente_id' | 'tipo_servico' | 'calendario_forense_id'> & {
     clientes?: Pick<Cliente, 'id' | 'nome'>
+    calendario?: CalendarioForense | null
   }) | null
 }
 

@@ -10,6 +10,8 @@ import { enviarEmail, layoutEmail, itemListaHtml, botaoHtml, escapeHtml, emailCo
 import { getSiteUrl } from '@/lib/site-url'
 
 const CACHE_TTL_MS = 48 * 60 * 60 * 1000 // 48 horas
+const CRON_BATCH_SIZE = 200
+const CRON_BUDGET_MS = 4 * 60 * 1000
 
 export interface VerificacaoResult {
   ok?: boolean
@@ -56,9 +58,13 @@ export async function analisarAndamento(
     : Infinity
 
   if (!forcar && idadeMs < CACHE_TTL_MS) {
-    const horasAtras = Math.floor(idadeMs / 3_600_000)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = ultimaVerif!.raw_response as any
+    const fonteCache = raw?.fonte === 'esaj'
+      ? 'eSAJ'
+      : raw?.fonte === 'datajud'
+        ? 'Datajud/CNJ'
+        : raw?.fonte
     return {
       ok: true,
       doCache: true,
@@ -68,7 +74,7 @@ export async function analisarAndamento(
       movimentos: raw?.movimentos ?? undefined,
       capa: raw?.capa ?? undefined,
       verificadoEm: ultimaVerif!.verificado_em,
-      fonte: horasAtras === 0 ? 'há menos de 1 hora' : `há ${horasAtras}h`,
+      fonte: fonteCache,
     }
   }
 
@@ -116,16 +122,20 @@ export async function analisarAndamento(
 
 // Cron: processa todos os processos ativos com número CNJ, respeitando cache de 48h
 export async function verificarTodosProcessos() {
-  const supabase = await createClient()
   const admin = createAdminClient()
+  const inicioExecucao = Date.now()
+  const agora = new Date().toISOString()
 
-  const { data: processos } = await supabase
+  const { data: processos } = await admin
     .from('processos')
     .select('id, cliente_id, numero_cnj, responsavel_id, tipo_servico, clientes:cliente_id(nome)')
     .not('numero_cnj', 'is', null)
     .not('status_interno', 'eq', 'concluido')
+    .or(`proxima_verificacao_em.is.null,proxima_verificacao_em.lte.${agora}`)
+    .order('proxima_verificacao_em', { ascending: true, nullsFirst: true })
+    .limit(CRON_BATCH_SIZE)
 
-  if (!processos?.length) return { verificados: 0, pulados: 0 }
+  if (!processos?.length) return { verificados: 0, pulados: 0, restantes: 0 }
 
   let verificados = 0
   let pulados = 0
@@ -142,9 +152,10 @@ export async function verificarTodosProcessos() {
   }[] = []
 
   for (const p of processos) {
+    if (Date.now() - inicioExecucao >= CRON_BUDGET_MS) break
     if (!p.numero_cnj) continue
 
-    const { data: ultima } = await supabase
+    const { data: ultima } = await admin
       .from('verificacoes_datajud')
       .select('verificado_em, ultimo_andamento')
       .eq('processo_id', p.id)
@@ -154,18 +165,31 @@ export async function verificarTodosProcessos() {
 
     if (ultima) {
       const idadeMs = Date.now() - new Date(ultima.verificado_em).getTime()
-      if (idadeMs < CACHE_TTL_MS) { pulados++; continue }
+      if (idadeMs < CACHE_TTL_MS) {
+        pulados++
+        await admin
+          .from('processos')
+          .update({ proxima_verificacao_em: new Date(new Date(ultima.verificado_em).getTime() + CACHE_TTL_MS).toISOString() })
+          .eq('id', p.id)
+        continue
+      }
     }
 
     const tribunalResult = identificarTribunal(p.numero_cnj)
-    if (!tribunalResult?.tribunal) continue
+    if (!tribunalResult?.tribunal) {
+      await agendarNovaTentativa(admin, p.id, 24)
+      continue
+    }
 
     const { encontrado, ultimoAndamento, movimentos, capa, erro, fonte } = await analisarProcesso(
       p.numero_cnj,
       tribunalResult.tribunal.id
     )
 
-    if (fonte === 'erro' && !encontrado) continue
+    if (fonte === 'erro' && !encontrado) {
+      await agendarNovaTentativa(admin, p.id, 2)
+      continue
+    }
 
     const houve_movimentacao =
       encontrado && !!ultimoAndamento && !mesmoAndamento(ultima?.ultimo_andamento, ultimoAndamento)
@@ -201,6 +225,7 @@ export async function verificarTodosProcessos() {
     revalidatePath(`/cliente/processos/${p.id}`)
 
     verificados++
+    await agendarNovaTentativa(admin, p.id, 48)
     await new Promise(r => setTimeout(r, 800))
   }
 
@@ -208,7 +233,25 @@ export async function verificarTodosProcessos() {
     await enviarDigestMovimentacoes(movidas)
   }
 
-  return { verificados, pulados, movimentacoes: movidas.length }
+  const { count: restantes } = await admin
+    .from('processos')
+    .select('id', { count: 'exact', head: true })
+    .not('numero_cnj', 'is', null)
+    .not('status_interno', 'eq', 'concluido')
+    .or(`proxima_verificacao_em.is.null,proxima_verificacao_em.lte.${new Date().toISOString()}`)
+
+  return { verificados, pulados, movimentacoes: movidas.length, restantes: restantes ?? 0 }
+}
+
+async function agendarNovaTentativa(
+  admin: ReturnType<typeof createAdminClient>,
+  processoId: string,
+  horas: number
+) {
+  await admin
+    .from('processos')
+    .update({ proxima_verificacao_em: new Date(Date.now() + horas * 3_600_000).toISOString() })
+    .eq('id', processoId)
 }
 
 // Agrupa as movimentações por advogado responsável e envia um digest para cada.

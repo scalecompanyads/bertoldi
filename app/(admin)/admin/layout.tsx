@@ -20,6 +20,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex h-svh overflow-hidden">
+      <a
+        href="#conteudo-principal"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-3 focus:py-2 focus:text-sm focus:text-primary-foreground"
+      >
+        Ir para o conteúdo
+      </a>
       <AdminSidebar />
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 items-center justify-end border-b px-4 shrink-0 gap-3">
@@ -28,7 +34,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </span>
           <ThemeToggle />
         </header>
-        <main className="flex-1 overflow-y-auto p-6 space-y-4">
+        <main id="conteudo-principal" className="flex-1 overflow-y-auto p-6 space-y-4">
           <TarefasAlerta />
           {children}
         </main>

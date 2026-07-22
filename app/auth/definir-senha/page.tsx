@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Scale } from 'lucide-react'
 import { DefinirSenhaForm } from './definir-senha-form'
+import { BertoldiLogo } from '@/components/shared/bertoldi-logo'
 
 export const metadata = { title: 'Definir senha — Bertoldi Advocacia' }
 
@@ -15,9 +15,7 @@ export default async function DefinirSenhaPage() {
     <main className="flex min-h-svh flex-col items-center justify-center p-6 bg-muted/30">
       <div className="w-full max-w-sm space-y-8">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Scale className="h-6 w-6" />
-          </div>
+          <BertoldiLogo size="lg" />
           <div className="text-center space-y-1">
             <h1 className="text-xl font-bold tracking-tight">Crie sua senha</h1>
             <p className="text-sm text-muted-foreground">

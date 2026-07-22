@@ -16,6 +16,15 @@ const PAPEL_LABEL: Record<Exclude<PapelUsuario, 'cliente'>, string> = {
   secretaria: 'Secretaria',
 }
 
+function nomeExibicao({ nome, email }: Pick<Usuario, 'nome' | 'email'>): string {
+  const limpo = nome.trim()
+  if (!limpo) return 'Nome não informado'
+  if (limpo.toLowerCase() === email.trim().toLowerCase() || limpo.includes('@')) {
+    return limpo.split('@')[0]
+  }
+  return limpo
+}
+
 export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; usuarioAtualId: string }) {
   const [editando, setEditando] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -39,7 +48,7 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
   }
 
   async function remover() {
-    if (!confirm(`Remover ${membro.nome} da equipe? O acesso ao sistema será revogado imediatamente.`)) return
+    if (!confirm(`Remover ${nomeExibicao(membro)} da equipe? O acesso ao sistema será revogado imediatamente.`)) return
     setLoading(true)
     const res = await removerMembro(membro.id)
     if (res.error) toast.error(res.error)
@@ -54,6 +63,9 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
           <div className="space-y-1.5">
             <Label htmlFor={`nome-${membro.id}`}>Nome</Label>
             <Input id={`nome-${membro.id}`} name="nome" required defaultValue={membro.nome} />
+            <p className="text-[11px] text-muted-foreground truncate" title={membro.email}>
+              E-mail de acesso: {membro.email}
+            </p>
           </div>
           <div className="space-y-1.5">
             <Label>Papel</Label>
@@ -108,9 +120,9 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
 
   return (
     <div className="rounded-lg border p-4 flex items-start justify-between gap-3">
-      <div className="space-y-0.5 min-w-0">
+      <div className="space-y-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-semibold">{membro.nome}</p>
+          <p className="text-base font-semibold leading-snug">{nomeExibicao(membro)}</p>
           <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
             {PAPEL_LABEL[membro.papel as Exclude<PapelUsuario, 'cliente'>] ?? membro.papel}
           </span>
@@ -118,7 +130,9 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
             <span className="text-[10px] text-muted-foreground">(você)</span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground truncate">{membro.email}</p>
+        <p className="text-[11px] text-muted-foreground/70 truncate" title={membro.email}>
+          {membro.email}
+        </p>
         {membro.oab_numero ? (
           <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <BadgeCheck className="h-3 w-3 text-green-600 dark:text-green-400" />

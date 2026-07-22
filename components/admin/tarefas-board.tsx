@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
-import { Plus, Clock, Trash2, Pencil, Briefcase } from 'lucide-react'
+import { Plus, Clock, Trash2, Pencil, Briefcase, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -79,9 +79,11 @@ function isoParaDatetimeLocal(iso: string | null): string {
 export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; processos: ProcessoOpcao[] }) {
   const router = useRouter()
   const [itens, setItens] = useState(tarefas)
-
-  // Re-sincroniza o estado otimista quando o servidor devolve dados novos
-  useEffect(() => setItens(tarefas), [tarefas])
+  const [tarefasBase, setTarefasBase] = useState(tarefas)
+  if (tarefas !== tarefasBase) {
+    setTarefasBase(tarefas)
+    setItens(tarefas)
+  }
   const [dialogAberto, setDialogAberto] = useState(false)
   const [editando, setEditando] = useState<Tarefa | null>(null)
   const [statusNova, setStatusNova] = useState<StatusTarefa>('a_fazer')
@@ -99,8 +101,20 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
 
   function abrirEdicao(t: Tarefa) {
     setEditando(t)
+    setStatusNova(t.status)
     setProcessoSel(t.processo_id ?? '')
     setDialogAberto(true)
+  }
+
+  async function moverPorTeclado(tarefa: Tarefa, destino: StatusTarefa) {
+    if (tarefa.status === destino) return
+    const ordem = Math.max(0, ...itens.filter((t) => t.status === destino).map((t) => t.ordem + 1))
+    setItens((prev) => prev.map((t) => (t.id === tarefa.id ? { ...t, status: destino, ordem } : t)))
+    const result = await moverTarefa(tarefa.id, destino, ordem)
+    if (result.error) {
+      toast.error(result.error)
+      router.refresh()
+    }
   }
 
   async function salvar(e: React.FormEvent<HTMLFormElement>) {
@@ -110,6 +124,7 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
     fd.set('processo_id', processoSel)
     fd.set('prazo', prazoParaISO(fd.get('prazo') as string))
     if (!editando) fd.set('status', statusNova)
+    else fd.set('status', statusNova)
 
     const result = editando ? await atualizarTarefa(editando.id, fd) : await criarTarefa(fd)
     if (result.error) {
@@ -183,6 +198,9 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
               <div className="flex flex-col gap-2 p-3 pt-1 min-h-24">
                 {daColuna.map((t) => {
                   const prazo = infoPrazo(t.prazo, t.status === 'concluido')
+                  const idxColuna = COLUNAS.indexOf(status)
+                  const colunaAnterior = idxColuna > 0 ? COLUNAS[idxColuna - 1] : null
+                  const colunaSeguinte = idxColuna < COLUNAS.length - 1 ? COLUNAS[idxColuna + 1] : null
                   return (
                     <div
                       key={t.id}
@@ -197,7 +215,27 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
                         <p className={`text-sm font-medium leading-snug ${t.status === 'concluido' ? 'line-through text-muted-foreground' : ''}`}>
                           {t.titulo}
                         </p>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+                          {colunaAnterior && (
+                            <button
+                              type="button"
+                              onClick={() => moverPorTeclado(t, colunaAnterior)}
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`Mover para ${STATUS_TAREFA_LABEL[colunaAnterior]}`}
+                            >
+                              <ChevronLeft className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {colunaSeguinte && (
+                            <button
+                              type="button"
+                              onClick={() => moverPorTeclado(t, colunaSeguinte)}
+                              className="text-muted-foreground hover:text-foreground"
+                              aria-label={`Mover para ${STATUS_TAREFA_LABEL[colunaSeguinte]}`}
+                            >
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            </button>
+                          )}
                           <button onClick={() => abrirEdicao(t)} className="text-muted-foreground hover:text-foreground" aria-label="Editar">
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -213,6 +251,13 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
                         <p className={`flex items-center gap-1 text-xs ${prazo.classe}`}>
                           <Clock className="h-3 w-3 shrink-0" />
                           {prazo.texto}
+                        </p>
+                      )}
+                      {t.prazo_contexto && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {t.prazo_contexto.calendario_nome}
+                          {t.prazo_contexto.versao ? ` v${t.prazo_contexto.versao}` : ''}
+                          {t.prazo_contexto.ajuste_manual ? ' · data ajustada manualmente' : ' · sugestão confirmada'}
                         </p>
                       )}
                       {t.processo && (
@@ -259,6 +304,20 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
             <div className="space-y-1.5">
               <Label htmlFor="prazo">Prazo</Label>
               <Input id="prazo" name="prazo" type="datetime-local" defaultValue={isoParaDatetimeLocal(editando?.prazo ?? null)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Status</Label>
+              <Select value={statusNova} onValueChange={(v) => setStatusNova((v ?? 'a_fazer') as StatusTarefa)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {COLUNAS.map(status => (
+                    <SelectItem key={status} value={status}>{STATUS_TAREFA_LABEL[status]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Alternativa acessível ao arrastar: altere a coluna por este campo.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label>Processo vinculado</Label>

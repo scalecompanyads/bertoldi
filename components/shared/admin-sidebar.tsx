@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, LayoutDashboard, LogOut, Scale, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog, Upload, CalendarDays, History } from 'lucide-react'
+import { Users, LayoutDashboard, LogOut, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog, Upload, CalendarDays, History, Scale } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { BertoldiLogo } from '@/components/shared/bertoldi-logo'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -16,6 +17,7 @@ const NAV = [
   { href: '/admin/comunicados', label: 'Comunicados', icon: Bell, exact: false },
   { href: '/admin/tarefas', label: 'Minhas tarefas', icon: SquareKanban, exact: false },
   { href: '/admin/audiencias', label: 'Audiências', icon: CalendarDays, exact: false },
+  { href: '/admin/calendarios', label: 'Calendários', icon: Scale, exact: false },
   { href: '/admin/equipe', label: 'Equipe', icon: UserCog, exact: false },
   { href: '/admin/importar', label: 'Importar', icon: Upload, exact: false },
   { href: '/admin/auditoria', label: 'Auditoria', icon: History, exact: false },
@@ -48,18 +50,17 @@ export function AdminSidebar() {
   return (
     <aside className="flex h-full w-52 shrink-0 flex-col border-r bg-card">
       {/* Logo */}
-      <div className="flex h-14 items-center gap-2.5 border-b px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
-          <Scale className="h-4 w-4" aria-hidden />
-        </div>
-        <span className="text-sm font-semibold leading-tight">Bertoldi Advocacia</span>
+      <div className="flex h-14 items-center border-b px-4">
+        <BertoldiLogo href="/admin" size="sm" />
       </div>
 
       {/* Busca global */}
       <form onSubmit={buscar} className="p-2 pb-0">
         <div className="relative">
+          <label htmlFor="busca-global" className="sr-only">Buscar clientes ou processos</label>
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
+            id="busca-global"
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
             placeholder="Buscar..."
@@ -69,13 +70,14 @@ export function AdminSidebar() {
       </form>
 
       {/* Nav */}
-      <nav className="flex flex-col gap-0.5 p-2 flex-1">
+      <nav aria-label="Navegação administrativa" className="flex flex-col gap-0.5 p-2 flex-1">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
           return (
             <Link
               key={href}
               href={href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 active

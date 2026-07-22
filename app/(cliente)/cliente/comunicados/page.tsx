@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Bell } from 'lucide-react'
 import { MarcarLidoBtn } from '@/components/cliente/marcar-lido-btn'
-import type { Comunicado } from '@/lib/types'
+import type { Comunicado, ComunicadoDestinatario } from '@/lib/types'
 
 export default async function ClienteComunicadosPage() {
   const supabase = await createClient()
@@ -22,14 +22,17 @@ export default async function ClienteComunicadosPage() {
     )
   }
 
-  const { data: comunicados } = await supabase
-    .from('comunicados')
-    .select('*')
-    .or(`cliente_id.eq.${cliente.id},cliente_id.is.null`)
-    .order('enviado_em', { ascending: false })
+  const { data: destinatarios } = await supabase
+    .from('comunicado_destinatarios')
+    .select('lido_em, comunicado:comunicado_id(*)')
+    .eq('cliente_id', cliente.id)
 
-  const lista = (comunicados ?? []) as Comunicado[]
-  const naoLidos = lista.filter(c => !c.lido).length
+  const lista = ((destinatarios ?? []) as unknown as (
+    Pick<ComunicadoDestinatario, 'lido_em'> & { comunicado: Comunicado | null }
+  )[])
+    .filter((item): item is Pick<ComunicadoDestinatario, 'lido_em'> & { comunicado: Comunicado } => !!item.comunicado)
+    .sort((a, b) => b.comunicado.enviado_em.localeCompare(a.comunicado.enviado_em))
+  const naoLidos = lista.filter(item => !item.lido_em).length
 
   return (
     <div className="space-y-4">
@@ -44,14 +47,14 @@ export default async function ClienteComunicadosPage() {
 
       {lista.length > 0 ? (
         <div className="space-y-3">
-          {lista.map((c) => (
+          {lista.map(({ comunicado: c, lido_em }) => (
             <div
               key={c.id}
-              className={`rounded-xl border bg-card p-4 space-y-2 ${!c.lido ? 'border-primary/40 bg-primary/5' : ''}`}
+              className={`rounded-xl border bg-card p-4 space-y-2 ${!lido_em ? 'border-primary/40 bg-primary/5' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="font-semibold text-sm">{c.titulo}</p>
-                {!c.lido && <MarcarLidoBtn comunicadoId={c.id} />}
+                {!lido_em && <MarcarLidoBtn comunicadoId={c.id} />}
               </div>
               <p className="text-sm text-muted-foreground">{c.mensagem}</p>
               <p className="text-xs text-muted-foreground">

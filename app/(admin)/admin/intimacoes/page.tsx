@@ -21,7 +21,21 @@ export default async function IntimacoesPage({ searchParams }: Props) {
 
   let query = supabase
     .from('intimacoes')
-    .select('*, advogado:advogado_id(id, nome), processo:processo_id(id, cliente_id, tipo_servico, clientes:cliente_id(id, nome))')
+    .select(`
+      *,
+      advogado:advogado_id(id, nome),
+      processo:processo_id(
+        id, cliente_id, tipo_servico, calendario_forense_id,
+        clientes:cliente_id(id, nome),
+        calendario:calendario_forense_id(
+          id, nome, versao_ativa_id,
+          versao_ativa:calendario_forense_versoes!calendarios_versao_ativa_fk(
+            id, versao, fonte_url, fonte_descricao, vigencia_inicio, vigencia_fim,
+            dias:calendario_forense_dias(*)
+          )
+        )
+      )
+    `)
     .order('data_disponibilizacao', { ascending: false })
     .order('criado_em', { ascending: false })
     .limit(200)
@@ -56,6 +70,7 @@ export default async function IntimacoesPage({ searchParams }: Props) {
           <Link
             key={f}
             href={f === 'nao_lida' ? '/admin/intimacoes' : `/admin/intimacoes?status=${f}`}
+            aria-current={filtro === f ? 'page' : undefined}
             className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
               filtro === f
                 ? 'bg-primary text-primary-foreground border-primary'

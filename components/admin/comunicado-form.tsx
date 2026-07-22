@@ -31,7 +31,19 @@ export function ComunicadoForm({ clientes, clientePreSelecionado }: Props) {
     if (result.error) {
       toast.error(result.error)
     } else {
-      toast.success('Comunicado enviado.')
+      const emailsEnviados = result.emailsEnviados ?? 0
+      const emailsFalharam = result.emailsFalharam ?? 0
+      const resumoEmail = result.emailDesativado
+        ? ' E-mail desativado neste ambiente.'
+        : ` ${emailsEnviados} e-mail${emailsEnviados === 1 ? '' : 's'} enviado${emailsEnviados === 1 ? '' : 's'}.`
+      toast.success(`Comunicado enviado a ${result.destinatarios} cliente${result.destinatarios === 1 ? '' : 's'}.${resumoEmail}`)
+      if (emailsFalharam > 0) {
+        toast.warning(
+          emailsFalharam === 1
+            ? '1 e-mail não pôde ser enviado.'
+            : `${emailsFalharam} e-mails não puderam ser enviados.`
+        )
+      }
       setKey(k => k + 1)
     }
     setLoading(false)

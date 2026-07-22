@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { analisarAndamento } from '@/lib/actions/verificar-processo'
 import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
 import { ProcessoCapa } from '@/components/shared/processo-capa'
+import { DatajudTransparencia } from '@/components/shared/datajud-transparencia'
 import type { DatajudCapa } from '@/lib/datajud'
 
 interface Props {
@@ -133,6 +134,12 @@ export function VerificarDatajudBtn({ processoId, autoFetch = false }: Props) {
               </div>
             </div>
           </div>
+
+          <DatajudTransparencia
+            fonte={resultado.fonte}
+            verificadoEm={resultado.verificadoEm}
+            compacta
+          />
 
           {/* Dados de capa do processo */}
           {resultado.capa && <ProcessoCapa capa={resultado.capa} />}

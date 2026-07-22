@@ -58,7 +58,7 @@ export default async function AdminPage() {
     supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('arquivado', false),
     supabase.from('processos').select('*', { count: 'exact', head: true }).in('status_interno', ['em_analise', 'distribuido', 'em_andamento']),
     supabase.from('processos').select('*', { count: 'exact', head: true }).eq('status_interno', 'concluido'),
-    supabase.from('comunicados').select('*', { count: 'exact', head: true }).eq('lido', false),
+    supabase.from('comunicado_destinatarios').select('*', { count: 'exact', head: true }).is('lido_em', null),
     supabase
       .from('verificacoes_datajud')
       .select('id, processo_id, verificado_em, ultimo_andamento, processos(id, tipo_servico, cliente_id, status_interno, clientes(id, nome))')

@@ -6,6 +6,7 @@ import { STATUS_PROCESSO_LABEL, TIPO_DOCUMENTO_LABEL } from '@/lib/types'
 import { DocumentoDownloadBtn } from '@/components/cliente/documento-download-btn'
 import { AnalisarAndamentoBtn } from '@/components/cliente/analisar-andamento-btn'
 import { ProcessoCapa } from '@/components/shared/processo-capa'
+import { DatajudTransparencia } from '@/components/shared/datajud-transparencia'
 import { traduzirMovimento } from '@/lib/tpu'
 import type { DatajudCapa } from '@/lib/datajud'
 import { ProcessoEtapas } from '@/components/cliente/processo-etapas'
@@ -77,10 +78,13 @@ export default async function ProcessoClientePage({ params }: Props) {
   const obs = (observacoes ?? []) as Observacao[]
 
   // ---- Linha do tempo unificada: eventos do escritório + movimentos do tribunal ----
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const movs = ((ultimaVerificacao?.raw_response as any)?.movimentos ?? []) as { data: string; descricao: string; codigo?: number }[]
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const capa = ((ultimaVerificacao?.raw_response as any)?.capa ?? null) as DatajudCapa | null
+  const rawVerificacao = ultimaVerificacao?.raw_response as {
+    fonte?: string
+    movimentos?: { data: string; descricao: string; codigo?: number }[]
+    capa?: DatajudCapa | null
+  } | null
+  const movs = rawVerificacao?.movimentos ?? []
+  const capa = rawVerificacao?.capa ?? null
 
   const jaPublicado = new Set(evs.map((ev) => `${ev.data_evento}|${ev.descricao}`))
 
@@ -161,6 +165,13 @@ export default async function ProcessoClientePage({ params }: Props) {
         )}
       </div>
 
+      {ultimaVerificacao && (
+        <DatajudTransparencia
+          fonte={rawVerificacao?.fonte}
+          verificadoEm={ultimaVerificacao.verificado_em}
+        />
+      )}
+
       {/* Linha do tempo unificada */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
@@ -171,6 +182,8 @@ export default async function ProcessoClientePage({ params }: Props) {
             </span>
           )}
         </div>
+
+        {p.numero_cnj && <AnalisarAndamentoBtn processoId={id} autoFetch={!ultimaVerificacao} />}
 
         {timeline.length > 0 ? (
           <div className="relative">
@@ -217,8 +230,6 @@ export default async function ProcessoClientePage({ params }: Props) {
         ) : (
           <p className="text-sm text-muted-foreground py-3">Nenhum andamento disponível ainda.</p>
         )}
-
-        {p.numero_cnj && <AnalisarAndamentoBtn processoId={id} autoFetch={!ultimaVerificacao} />}
       </section>
 
       {/* Observações públicas */}

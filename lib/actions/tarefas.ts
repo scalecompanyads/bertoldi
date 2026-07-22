@@ -41,11 +41,14 @@ export async function atualizarTarefa(id: string, formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
+  const status = (formData.get('status') as StatusTarefa) || 'a_fazer'
   const { error } = await supabase.from('tarefas').update({
     titulo: formData.get('titulo') as string,
     descricao: (formData.get('descricao') as string) || null,
     processo_id: (formData.get('processo_id') as string) || null,
     prazo: (formData.get('prazo') as string) || null,
+    status,
+    concluida_em: status === 'concluido' ? new Date().toISOString() : null,
   }).eq('id', id).eq('usuario_id', user.id)
 
   if (error) return { error: error.message }

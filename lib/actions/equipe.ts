@@ -126,7 +126,7 @@ export async function convidarMembro(formData: FormData) {
   }
 
   revalidatePath('/admin/equipe')
-  return { ok: true, message: `Convite enviado para ${email}.` }
+  return { ok: true, message: `Convite enviado para ${nome}.` }
 }
 
 export async function removerMembro(id: string) {

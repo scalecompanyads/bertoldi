@@ -5,6 +5,10 @@ incrementais. Cada fase entrega algo funcional e testável — não é uma divis
 tarefas soltas. Itens marcados como (Fase 2 / complexo) estão registrados aqui para não serem
 esquecidos, mas detalhados de verdade em `BACKLOG_FASE2.md`.
 
+Status revisado em 22/07/2026. A evidência verificável e o papel responsável por cada
+capacidade entregue estão em `MATRIZ_REQUISITOS.md`; a operação diária está em
+`RUNBOOK_OPERACAO.md`.
+
 ---
 
 ## Fase 0 — Fundação técnica
@@ -12,14 +16,14 @@ esquecidos, mas detalhados de verdade em `BACKLOG_FASE2.md`.
 Objetivo: ambiente rodando, banco modelado, autenticação funcionando. Nada de tela bonita
 ainda — é a base que todo o resto depende.
 
-- [ ] Setup do projeto Next.js (App Router, TypeScript, Tailwind, shadcn/ui)
-- [ ] Setup do projeto Supabase (banco, auth, storage)
-- [ ] Modelagem do banco de dados (ver `MODELO_DE_DADOS.md`)
-- [ ] Configuração de Row Level Security (RLS) básica: cliente só vê seus próprios dados,
+- [x] Setup do projeto Next.js (App Router, TypeScript, Tailwind, shadcn/ui)
+- [x] Setup do projeto Supabase (banco, auth, storage)
+- [x] Modelagem do banco de dados (ver `MODELO_DE_DADOS.md`)
+- [x] Configuração de Row Level Security (RLS) básica: cliente só vê seus próprios dados,
       equipe vê tudo
-- [ ] Autenticação: login de cliente e login de equipe (papéis: admin, advogado, secretária)
-- [ ] Deploy inicial na Vercel (ambiente de staging)
-- [ ] Configuração de dark/light mode (`next-themes` + tokens shadcn)
+- [x] Autenticação: login de cliente e login de equipe (papéis: admin, advogado, secretária)
+- [x] Deploy inicial na Vercel (ambiente de staging)
+- [x] Configuração de dark/light mode (`next-themes` + tokens shadcn)
 
 **Critério de pronto**: é possível criar um usuário de teste (cliente e equipe), logar com
 cada um, e confirmar que RLS bloqueia acesso cruzado entre clientes.
@@ -31,17 +35,17 @@ cada um, e confirmar que RLS bloqueia acesso cruzado entre clientes.
 Objetivo: a equipe consegue cadastrar e gerenciar tudo manualmente, mesmo sem nenhuma
 automação ainda. Esta fase é pré-requisito para a área do cliente ter o que mostrar.
 
-- [ ] Tela de listagem de clientes com busca por nome ou CPF/CNPJ
-- [ ] Tela de ficha do cliente (dados cadastrais, edição inline)
-- [ ] Cadastro de processo vinculado a um cliente (número CNJ, tribunal, vara, status,
+- [x] Tela de listagem de clientes com busca por nome ou CPF/CNPJ
+- [x] Tela de ficha do cliente (dados cadastrais, edição inline)
+- [x] Cadastro de processo vinculado a um cliente (número CNJ, tribunal, vara, status,
       responsável, data de contratação)
-- [ ] Tela de detalhe do processo
-- [ ] Linha do tempo manual (adicionar/editar/remover eventos, toggle visível ao cliente)
-- [ ] Upload de documentos vinculados ao processo, com toggle de visibilidade ao cliente
+- [x] Tela de detalhe do processo
+- [x] Linha do tempo manual (adicionar/editar/remover eventos, toggle visível ao cliente)
+- [x] Upload de documentos vinculados ao processo, com toggle de visibilidade ao cliente
       (Supabase Storage + RLS)
-- [ ] Observações internas (não visíveis ao cliente) e observações públicas (visíveis)
-- [ ] Cadastro de serviços contratados por cliente (tipo de serviço, data, status)
-- [ ] Rastreabilidade simples: campos `atualizado_por` e `atualizado_em` em edições
+- [x] Observações internas (não visíveis ao cliente) e observações públicas (visíveis)
+- [x] Cadastro de serviços contratados por cliente (tipo de serviço, data, status)
+- [x] Rastreabilidade simples: campos `atualizado_por` e `atualizado_em` em edições
       sensíveis (status do processo, número CNJ)
 
 **Critério de pronto**: um advogado consegue, sozinho, cadastrar um cliente do zero, vincular
@@ -54,13 +58,13 @@ decidir o que fica visível.
 
 Objetivo: o cliente loga e vê o que a equipe cadastrou na Fase 1, com boa experiência mobile.
 
-- [ ] Login do cliente (Supabase Auth)
-- [ ] Tela inicial da área do cliente: lista de processos/serviços vinculados
-- [ ] Detalhe do processo: linha do tempo (somente itens marcados como visíveis), número do
+- [x] Login do cliente (Supabase Auth)
+- [x] Tela inicial da área do cliente: lista de processos/serviços vinculados
+- [x] Detalhe do processo: linha do tempo (somente itens marcados como visíveis), número do
       processo, status atual
-- [ ] Listagem de documentos liberados pelo escritório, com download
-- [ ] Observações públicas visíveis na tela do processo
-- [ ] Perfil do cliente: dados cadastrais + lista de serviços contratados
+- [x] Listagem de documentos liberados pelo escritório, com download
+- [x] Observações públicas visíveis na tela do processo
+- [x] Perfil do cliente: dados cadastrais + lista de serviços contratados
 
 **Critério de pronto**: o cliente de teste consegue logar pelo celular e ver exatamente o
 cenário de exemplo do briefing original (contratação → triagem → análise → distribuição),
@@ -73,13 +77,13 @@ sem ver nada marcado como interno.
 Objetivo: reaproveitar a lógica já prototipada pelo cliente (arquivo HTML enviado), agora
 integrada ao cadastro de processo.
 
-- [ ] Migrar a tabela de mapeamento CNJ → tribunal e a lógica de parsing do número CNJ para
+- [x] Migrar a tabela de mapeamento CNJ → tribunal e a lógica de parsing do número CNJ para
       `/lib/cnj-parser`
-- [ ] Ao cadastrar/visualizar um processo, identificar automaticamente o tribunal competente
+- [x] Ao cadastrar/visualizar um processo, identificar automaticamente o tribunal competente
       a partir do número CNJ
-- [ ] Botão "Abrir no portal do tribunal": copia o número e abre a página de consulta pública
+- [x] Botão "Abrir no portal do tribunal": copia o número e abre a página de consulta pública
       correta (reaproveitando as URLs já mapeadas no protótipo)
-- [ ] Exibir essa informação tanto na tela do advogado quanto, opcionalmente, na do cliente
+- [x] Exibir essa informação tanto na tela do advogado quanto, opcionalmente, na do cliente
 
 **Critério de pronto**: ao colar um número CNJ válido, o sistema mostra corretamente o
 tribunal e abre a página certa ao clicar no botão — replicando o comportamento do protótipo
@@ -92,18 +96,18 @@ HTML original, agora integrado ao resto da plataforma.
 Objetivo: verificação automática de movimentações, com transparência sobre quando a última
 verificação aconteceu.
 
-- [ ] Cliente de integração com a API pública do Datajud (`/lib/datajud`)
-- [ ] Tabela `verificacoes_datajud`: registra cada consulta (automática ou manual), se houve
+- [x] Cliente de integração com a API pública do Datajud (`/lib/datajud`)
+- [x] Tabela `verificacoes_datajud`: registra cada consulta (automática ou manual), se houve
       movimentação nova, e o conteúdo encontrado
-- [ ] Cron job (Vercel Cron ou Supabase Edge Function + pg_cron) rodando periodicamente,
+- [x] Cron job (Vercel Cron ou Supabase Edge Function + pg_cron) rodando periodicamente,
       consultando o Datajud para cada processo ativo
-- [ ] Botão "Verificar agora" na tela do processo (consulta manual, sob demanda)
-- [ ] Exibição clara, na tela do advogado, de "última verificação: [data/hora] — [automática /
+- [x] Botão "Verificar agora" na tela do processo (consulta manual, sob demanda)
+- [x] Exibição clara, na tela do advogado, de "última verificação: [data/hora] — [automática /
       manual]"
-- [ ] Quando uma movimentação nova é encontrada, sinalizar visualmente no painel (ex: badge
+- [x] Quando uma movimentação nova é encontrada, sinalizar visualmente no painel (ex: badge
       "nova movimentação") para o advogado revisar e, se quiser, transcrever para a linha do
       tempo do cliente
-- [ ] Comunicar claramente na interface (tooltip ou texto de apoio) que a atualização do
+- [x] Comunicar claramente na interface (tooltip ou texto de apoio) que a atualização do
       Datajud não é instantânea e depende do tribunal de origem
 
 **Critério de pronto**: um processo de teste com número CNJ real mostra resultado da consulta
@@ -120,13 +124,13 @@ atualização do Datajud — isso deve ser comunicado ao cliente antes desta fas
 Objetivo: o escritório consegue avisar o cliente sobre novidades, com opção de ligar/desligar
 por processo.
 
-- [ ] Campo de configuração por processo: "notificar cliente em caso de atualização?
+- [x] Campo de configuração por processo: "notificar cliente em caso de atualização?
       (sim/não)"
-- [ ] Envio de e-mail (via Resend ou similar) quando uma movimentação é confirmada e marcada
+- [x] Envio de e-mail (via Resend ou similar) quando uma movimentação é confirmada e marcada
       como visível ao cliente
-- [ ] Tabela e tela de "comunicados": mensagens gerais do escritório para o cliente (não
+- [x] Tabela e tela de "comunicados": mensagens gerais do escritório para o cliente (não
       ligadas a um processo específico), com status lido/não lido
-- [ ] Painel de notificações dentro da área do cliente (sino/contador de não lidos)
+- [x] Painel de notificações dentro da área do cliente (sino/contador de não lidos)
 
 **Critério de pronto**: ao marcar uma linha do tempo como visível com notificação ativada, o
 cliente de teste recebe um e-mail; um comunicado geral aparece na área do cliente como não
@@ -157,14 +161,19 @@ página) e formulário de contato funcional.
 
 Objetivo: passar o pente fino antes de considerar o MVP avançado pronto para uso real.
 
-- [ ] Auditoria de acessibilidade (contraste, navegação por teclado, leitor de tela) em todas
+- [x] Auditoria de acessibilidade (contraste, navegação por teclado, leitor de tela) em todas
       as telas principais
-- [ ] Revisão de responsividade mobile em toda a área do cliente
-- [ ] Testes de carga básicos simulando volume real (3 a 5 mil processos) na busca e
+- [x] Revisão de responsividade mobile em toda a área do cliente
+- [x] Testes de carga básicos simulando volume real (3 a 5 mil processos) na busca e
       listagem — checar performance de queries e índices no Postgres
-- [ ] Revisão de mensagens de erro e estados vazios (ex: cliente sem processos ainda)
-- [ ] Documentação mínima de uso para a equipe interna (como cadastrar processo, como marcar
+- [x] Revisão de mensagens de erro e estados vazios (ex: cliente sem processos ainda)
+- [x] Documentação mínima de uso para a equipe interna (como cadastrar processo, como marcar
       visibilidade, como interpretar o status do Datajud)
+
+**Nota (jul/2026):** a Onda 1 entregou calendários forenses versionados, índices e cron
+Datajud em lotes, `error.tsx`/`loading.tsx`, skip links e suite axe/Playwright. O script de
+carga (`scripts/onda1/load-test.mjs`) e os testes E2E ficam prontos; a execução com 5 mil
+processos exige `DATABASE_URL_TEST` isolado e as credenciais E2E.
 
 **Critério de pronto**: o sistema está pronto para os primeiros usuários reais da equipe do
 escritório usarem em produção.

@@ -1,20 +1,26 @@
 # Documentação do projeto — guia de leitura
 
-Este diretório contém a documentação de planejamento da Plataforma Oficial do Escritório,
-para ser usada como referência ao desenvolver o projeto com Claude Code.
+Este diretório contém o planejamento, a rastreabilidade e a operação da Plataforma Oficial
+do Escritório.
 
 ## Ordem de leitura recomendada
 
+0. **APRESENTACAO_CLIENTE.md** — documento para apresentar ao cliente: funcionalidades,
+   fluxos, limitações honestas e o que ainda não entra no entregável
 1. **STACK.md** — qual tecnologia usar e por quê, estrutura de pastas, diretrizes de design
    system (acessibilidade, dark/light, tipografia)
 2. **MODELO_DE_DADOS.md** — tabelas, campos, relações e regras de RLS. Usar como base direta
    para escrever as migrations do Supabase
 3. **ROADMAP.md** — fases de desenvolvimento, do setup básico ao MVP avançado, cada uma com
    critério de pronto. Seguir a ordem das fases — cada uma depende da anterior
-4. **BACKLOG_FASE2.md** — itens pedidos pelo cliente mas conscientemente adiados por
+4. **MATRIZ_REQUISITOS.md** — status, papel responsável e evidência verificável de cada
+   capacidade entregue
+5. **RUNBOOK_OPERACAO.md** — rotina diária, fluxos críticos, incidentes e checklist de deploy
+6. **NOTAS_TECNICAS.md** — fontes, timestamps, cache, cobertura e limites das consultas
+7. **BACKLOG_FASE2.md** — itens pedidos pelo cliente mas conscientemente adiados por
    complexidade/custo. Não implementar agora, mas não descartar — manter como referência para
    quando o MVP estiver em produção e o escritório quiser evoluir
-5. **prototipo-consulta-tribunal.html** — protótipo funcional feito pelo próprio cliente, que
+8. **prototipo-consulta-tribunal.html** — protótipo funcional feito pelo próprio cliente, que
    identifica o tribunal competente a partir do número CNJ e abre a página de consulta
    pública correta. Contém a tabela de mapeamento (`CMAP`) e lista de tribunais (`TRIBS`) que
    devem ser portadas para `/lib/cnj-parser` na Fase 3 do roadmap — não reescrever essa lógica

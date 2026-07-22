@@ -97,14 +97,19 @@ export default async function AudienciasPage() {
             Agenda centralizada do escritório — lembrete por e-mail na véspera
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <a
-            href="/api/ics"
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
-          >
-            <CalendarPlus className="h-3.5 w-3.5" />
-            Exportar (.ics)
-          </a>
+        <div className="flex items-start gap-2 flex-wrap">
+          <div className="flex flex-col items-end gap-1">
+            <a
+              href="/api/ics"
+              className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium hover:bg-accent transition-colors"
+            >
+              <CalendarPlus className="h-3.5 w-3.5" />
+              Exportar (.ics)
+            </a>
+            <p className="text-[11px] text-muted-foreground max-w-[240px] text-right leading-snug">
+              Arquivo de calendário para importar as audiências no Google Calendar, Outlook ou Apple Calendar.
+            </p>
+          </div>
           <AudienciaForm processos={opcoesProcesso} />
         </div>
       </div>

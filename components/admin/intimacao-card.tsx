@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/dialog'
 import { marcarIntimacao, criarTarefaDeIntimacao } from '@/lib/actions/intimacoes'
 import { vencimentoPrazoDJEN } from '@/lib/prazos'
+import { diasExcluidosEntre, expandirDiasNaoUteis } from '@/lib/prazos/calendario'
+import type { PrazoContexto } from '@/lib/types'
 import type { Intimacao } from '@/lib/types'
 
 // data_disponibilizacao é date pura (aaaa-mm-dd) — formatar sem new Date()
@@ -47,18 +49,22 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
 
   const naoLida = i.status === 'nao_lida'
   const textoLongo = (i.texto?.length ?? 0) > 280
+  const calendario = i.processo?.calendario ?? null
+  const versao = calendario?.versao_ativa ?? null
+  const diasCalendario = useMemo(() => versao?.dias ?? [], [versao?.dias])
+  const diasNaoUteis = useMemo(() => expandirDiasNaoUteis(diasCalendario), [diasCalendario])
 
   // Sugestão pela sistemática do CPC: publicada no 1º dia útil após a
   // disponibilização; prazo começa no dia útil seguinte; só dias úteis contam
   const sugestao = useMemo(() => {
     const dias = parseInt(diasUteis, 10)
     if (!Number.isFinite(dias) || dias < 1) return null
-    return vencimentoPrazoDJEN(i.data_disponibilizacao, dias)
-  }, [diasUteis, i.data_disponibilizacao])
+    return vencimentoPrazoDJEN(i.data_disponibilizacao, dias, diasNaoUteis)
+  }, [diasUteis, i.data_disponibilizacao, diasNaoUteis])
 
   function abrirDialogPrazo() {
     setDiasUteis('15')
-    setVencimento(dataParaInput(vencimentoPrazoDJEN(i.data_disponibilizacao, 15)))
+    setVencimento(dataParaInput(vencimentoPrazoDJEN(i.data_disponibilizacao, 15, diasNaoUteis)))
     setVencimentoEditado(false)
     setDialogPrazo(true)
   }
@@ -68,7 +74,7 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
     if (!vencimentoEditado) {
       const dias = parseInt(v, 10)
       if (Number.isFinite(dias) && dias >= 1) {
-        setVencimento(dataParaInput(vencimentoPrazoDJEN(i.data_disponibilizacao, dias)))
+        setVencimento(dataParaInput(vencimentoPrazoDJEN(i.data_disponibilizacao, dias, diasNaoUteis)))
       }
     }
   }
@@ -86,7 +92,17 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
     const prazoISO = comPrazo && vencimento
       ? new Date(`${vencimento}T23:59:00`).toISOString()
       : null
-    const res = await criarTarefaDeIntimacao(i.id, prazoISO)
+    const contexto: PrazoContexto | null = comPrazo ? {
+      calendario_id: calendario?.id ?? null,
+      versao_id: versao?.id ?? null,
+      versao: versao?.versao ?? null,
+      calendario_nome: calendario?.nome ?? 'Feriados nacionais',
+      fonte_url: versao?.fonte_url ?? null,
+      dias_uteis: parseInt(diasUteis, 10),
+      vencimento_sugerido: sugestao ? dataParaInput(sugestao) : null,
+      ajuste_manual: vencimentoEditado,
+    } : null
+    const res = await criarTarefaDeIntimacao(i.id, prazoISO, contexto)
     if (res.error) {
       toast.error(res.error)
     } else {
@@ -218,8 +234,29 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
             <p className="text-sm text-muted-foreground">
               Disponibilizada no DJEN em <strong>{formatarData(i.data_disponibilizacao)}</strong>.
               A sugestão segue o CPC: publicação no 1º dia útil seguinte, início no dia útil
-              posterior, contando só dias úteis (feriados nacionais).
+              posterior, contando só dias úteis.
             </p>
+            {versao ? (
+              <div className="rounded-lg border bg-muted/30 p-3 text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">
+                  Calendário: {calendario?.nome} · versão {versao.versao}
+                </p>
+                <p>{versao.fonte_descricao}</p>
+                <a
+                  href={versao.fonte_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-primary hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" /> Abrir fonte oficial
+                </a>
+              </div>
+            ) : (
+              <p className="rounded-lg border border-amber-300/50 bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+                Este processo não possui calendário local publicado. A sugestão considera
+                somente fins de semana e feriados nacionais.
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor={`dias-${i.id}`}>Prazo (dias úteis)</Label>
@@ -246,9 +283,21 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
                 : sugestao
                   ? `Sugestão calculada: ${sugestao.toLocaleDateString('pt-BR')}. `
                   : ''}
-              A contagem não considera feriados estaduais/municipais nem recesso forense —
-              confirme a data antes de salvar.
+              {versao
+                ? 'O calendário local foi aplicado, mas suspensões novas podem não estar cadastradas.'
+                : 'A contagem não considera feriados estaduais/municipais nem recesso forense.'}
+              {' '}Confirme a data antes de salvar.
             </p>
+            {sugestao && diasExcluidosEntre(diasCalendario, new Date(`${i.data_disponibilizacao}T12:00:00`), sugestao).length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                <p className="font-medium text-foreground">Ocorrências locais no período:</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                  {diasExcluidosEntre(diasCalendario, new Date(`${i.data_disponibilizacao}T12:00:00`), sugestao).map(dia => (
+                    <li key={dia.id}>{dia.data_inicio}{dia.data_fim !== dia.data_inicio ? ` a ${dia.data_fim}` : ''} — {dia.descricao}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="flex justify-end gap-2">
               <Button
                 type="button"

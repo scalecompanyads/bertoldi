@@ -173,10 +173,65 @@ Mensagens gerais do escritório para o cliente, não ligadas a um processo espec
 | titulo | text | |
 | mensagem | text | |
 | enviado_em | timestamptz | |
-| lido | boolean | default false — nota: se for comunicado em massa, considerar tabela de junção `comunicado_lido (comunicado_id, cliente_id)` em vez de campo único, para rastrear leitura por cliente individualmente |
+| lido | boolean | legado; não usar em novos fluxos |
 
-**RLS**: cliente lê apenas comunicados destinados a ele (`cliente_id = próprio` ou
-`cliente_id is null`). Equipe lê/cria todos.
+## `comunicado_destinatarios`
+
+Materializa os destinatários no momento da publicação, inclusive para comunicados globais.
+Assim, leitura e entrega de e-mail são independentes por cliente.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| comunicado_id | uuid | chave composta, referencia `comunicados(id)` |
+| cliente_id | uuid | chave composta, referencia `clientes(id)` |
+| lido_em | timestamptz, nullable | nulo enquanto não lido |
+| email_enviado_em | timestamptz, nullable | preenchido após confirmação do Resend |
+| criado_em | timestamptz | data em que o cliente virou destinatário |
+
+**RLS**: equipe lê/edita todos os destinatários. Cliente lê apenas a própria linha, vinculada
+por `clientes.usuario_id`; a marcação de leitura passa por Server Action autenticada.
+
+---
+
+## `calendarios_forenses` (Onda 1)
+
+Cabeçalho do calendário local (UF/comarca/tribunal). Sem seed: o escritório cadastra a partir
+de fonte oficial.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| id | uuid | |
+| nome | text | |
+| escopo | text | `estadual`, `municipal`, `tribunal`, `comarca` |
+| uf | char(2) | obrigatória |
+| comarca | text, nullable | |
+| tribunal | text, nullable | |
+| ativo | boolean | |
+| versao_ativa_id | uuid, nullable | aponta para versão publicada |
+
+## `calendario_forense_versoes`
+
+Versões imutáveis após publicação. Correções criam nova versão.
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| calendario_id | uuid | |
+| versao | int | |
+| status | text | `rascunho`, `publicado`, `substituido` |
+| vigencia_inicio / vigencia_fim | date | |
+| fonte_url / fonte_descricao | text | obrigatórios |
+
+## `calendario_forense_dias`
+
+Dias ou intervalos não úteis (feriado, recesso, suspensão).
+
+## Campos relacionados
+
+- `processos.calendario_forense_id` — vínculo opcional
+- `processos.proxima_verificacao_em` — fila do cron Datajud em lotes
+- `tarefas.prazo_contexto` — jsonb com versão usada, sugestão e ajuste manual
+
+**RLS**: equipe lê; apenas admin cria/publica/substitui.
 
 ---
 

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight } from 'lucide-react'
 import { ProcessoForm } from '@/components/admin/processo-form'
-import type { Cliente, Usuario } from '@/lib/types'
+import type { CalendarioForense, Cliente, Usuario } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -13,9 +13,10 @@ export default async function NovoProcessoPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: cliente }, { data: advogados }] = await Promise.all([
+  const [{ data: cliente }, { data: advogados }, { data: calendarios }] = await Promise.all([
     supabase.from('clientes').select('id, nome').eq('id', id).single(),
     supabase.from('usuarios').select('id, nome').in('papel', ['admin', 'advogado']).order('nome'),
+    supabase.from('calendarios_forenses').select('id, nome, uf, comarca').eq('ativo', true).not('versao_ativa_id', 'is', null).order('nome'),
   ])
 
   if (!cliente) notFound()
@@ -30,7 +31,11 @@ export default async function NovoProcessoPage({ params }: Props) {
         <span className="text-foreground font-medium">Novo processo</span>
       </nav>
       <h1 className="text-xl font-semibold">Novo processo</h1>
-      <ProcessoForm clienteId={id} advogados={(advogados ?? []) as Pick<Usuario, 'id' | 'nome'>[]} />
+      <ProcessoForm
+        clienteId={id}
+        advogados={(advogados ?? []) as Pick<Usuario, 'id' | 'nome'>[]}
+        calendarios={(calendarios ?? []) as Pick<CalendarioForense, 'id' | 'nome' | 'uf' | 'comarca'>[]}
+      />
     </div>
   )
 }

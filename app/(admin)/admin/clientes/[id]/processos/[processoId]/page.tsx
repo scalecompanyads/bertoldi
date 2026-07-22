@@ -3,8 +3,6 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronRight, Eye, EyeOff } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { ProcessoForm } from '@/components/admin/processo-form'
 import { AdicionarEventoForm, RemoverEventoBtn } from '@/components/admin/evento-form'
 import { ObservacaoForm, RemoverObservacaoBtn } from '@/components/admin/observacao-form'
@@ -13,10 +11,11 @@ import { TribunalBadge } from '@/components/admin/tribunal-badge'
 import { VerificarDatajudBtn } from '@/components/admin/verificar-datajud-btn'
 import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
 import { ProcessoCapa } from '@/components/shared/processo-capa'
+import { DatajudTransparencia } from '@/components/shared/datajud-transparencia'
 import type { DatajudCapa } from '@/lib/datajud'
 import { AutoScrollTo } from '@/components/shared/auto-scroll-to'
 import { STATUS_PROCESSO_LABEL } from '@/lib/types'
-import type { Processo, Cliente, EventoLinhaDotTempo, Observacao, Documento, Usuario } from '@/lib/types'
+import type { CalendarioForense, Processo, Cliente, EventoLinhaDotTempo, Observacao, Documento, Usuario } from '@/lib/types'
 
 interface Props {
   params: Promise<{ id: string; processoId: string }>
@@ -41,6 +40,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
     { data: observacoes },
     { data: documentos },
     { data: advogados },
+    { data: calendarios },
     { data: ultimaVerificacao },
     { count: novasMovimentacoes },
   ] = await Promise.all([
@@ -50,6 +50,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
     supabase.from('observacoes').select('*, autor:autor_id(id, nome)').eq('processo_id', processoId).order('criado_em', { ascending: false }),
     supabase.from('documentos').select('*').eq('processo_id', processoId).order('criado_em', { ascending: false }),
     supabase.from('usuarios').select('id, nome').in('papel', ['admin', 'advogado']).order('nome'),
+    supabase.from('calendarios_forenses').select('id, nome, uf, comarca').eq('ativo', true).not('versao_ativa_id', 'is', null).order('nome'),
     supabase.from('verificacoes_datajud').select('*').eq('processo_id', processoId).order('verificado_em', { ascending: false }).limit(1).single(),
     supabase.from('verificacoes_datajud').select('*', { count: 'exact', head: true }).eq('processo_id', processoId).eq('houve_movimentacao', true),
   ])
@@ -61,6 +62,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
   const evs = (eventos ?? []) as (EventoLinhaDotTempo & { autor: Pick<Usuario, 'id' | 'nome'> | null })[]
   const obs = (observacoes ?? []) as (Observacao & { autor: Pick<Usuario, 'id' | 'nome'> | null })[]
   const docs = (documentos ?? []) as Documento[]
+  const ultimaFonte = (ultimaVerificacao?.raw_response as { fonte?: string } | null)?.fonte
 
 
   return (
@@ -201,9 +203,16 @@ export default async function ProcessoDetailPage({ params }: Props) {
               <h3 className="font-semibold text-sm">Análise de andamento</h3>
               <p className="text-xs text-muted-foreground">
                 Consulta automática no portal do tribunal (eSAJ) ou via Datajud/CNJ, conforme o tribunal.
-                Cache de 48h — use "Forçar atualização" quando precisar de dado imediato.
+                Cache de 48h — use &quot;Forçar atualização&quot; quando precisar de dado imediato.
               </p>
             </div>
+
+            <DatajudTransparencia
+              fonte={ultimaFonte}
+              verificadoEm={ultimaVerificacao?.verificado_em}
+            />
+
+            <VerificarDatajudBtn processoId={processoId} autoFetch={!ultimaVerificacao} />
 
             {/* Última verificação */}
             {ultimaVerificacao ? (() => {
@@ -256,13 +265,11 @@ export default async function ProcessoDetailPage({ params }: Props) {
                   ) : null}
                 </div>
               )
-            })() : (
+            })(            ) : (
               <div className="rounded-lg border p-4">
                 <p className="text-sm text-muted-foreground">Nenhuma verificação realizada ainda.</p>
               </div>
             )}
-
-            <VerificarDatajudBtn processoId={processoId} autoFetch={!ultimaVerificacao} />
           </TabsContent>
         )}
 
@@ -272,6 +279,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
             clienteId={clienteId}
             processo={p}
             advogados={(advogados ?? []) as Pick<Usuario, 'id' | 'nome'>[]}
+            calendarios={(calendarios ?? []) as Pick<CalendarioForense, 'id' | 'nome' | 'uf' | 'comarca'>[]}
           />
         </TabsContent>
       </Tabs>

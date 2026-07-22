@@ -7,7 +7,7 @@ import { buscarComunicacoes, extrairTextoPlano } from '@/lib/djen'
 import { assertEquipe } from './assert-equipe'
 import { enviarEmail, layoutEmail, itemListaHtml, botaoHtml, escapeHtml, emailConfigurado } from '@/lib/email'
 import { getSiteUrl } from '@/lib/site-url'
-import type { StatusIntimacao } from '@/lib/types'
+import type { PrazoContexto, StatusIntimacao } from '@/lib/types'
 
 function dataISO(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -198,7 +198,11 @@ export async function marcarIntimacao(id: string, status: StatusIntimacao) {
 // como tratada. `prazoISO` vem do diálogo onde o advogado confirmou (ou editou)
 // a data sugerida — contagem de prazo processual é decisão jurídica, o sistema
 // só sugere, nunca define sozinho.
-export async function criarTarefaDeIntimacao(intimacaoId: string, prazoISO?: string | null) {
+export async function criarTarefaDeIntimacao(
+  intimacaoId: string,
+  prazoISO?: string | null,
+  prazoContexto?: PrazoContexto | null
+) {
   const auth = await assertEquipe()
   if ('error' in auth) return { error: auth.error }
 
@@ -237,6 +241,7 @@ export async function criarTarefaDeIntimacao(intimacaoId: string, prazoISO?: str
     descricao: (intimacao.texto ?? '').slice(0, 500) || null,
     processo_id: intimacao.processo_id,
     prazo: prazoISO || null,
+    prazo_contexto: prazoISO && prazoContexto ? prazoContexto : null,
     status: 'a_fazer',
     ordem: (primeira?.ordem ?? 1) - 1,
   })

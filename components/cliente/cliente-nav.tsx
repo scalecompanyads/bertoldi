@@ -13,7 +13,7 @@ const NAV = [
   { href: '/cliente/perfil', label: 'Perfil', icon: User, exact: false },
 ]
 
-export function ClienteNav() {
+export function ClienteNav({ comunicadosNaoLidos = 0 }: { comunicadosNaoLidos?: number }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -24,7 +24,7 @@ export function ClienteNav() {
   }
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav aria-label="Navegação do cliente" className="fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-around px-4">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
@@ -32,6 +32,7 @@ export function ClienteNav() {
             <Link
               key={href}
               href={href}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors text-xs',
                 active
@@ -39,13 +40,24 @@ export function ClienteNav() {
                   : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <Icon className="h-5 w-5" />
+              <span className="relative">
+                <Icon className="h-5 w-5" />
+                {href === '/cliente/comunicados' && comunicadosNaoLidos > 0 && (
+                  <span
+                    aria-label={`${comunicadosNaoLidos} avisos não lidos`}
+                    className="absolute -right-2.5 -top-2 flex min-w-4 h-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold leading-none text-primary-foreground"
+                  >
+                    {comunicadosNaoLidos > 99 ? '99+' : comunicadosNaoLidos}
+                  </span>
+                )}
+              </span>
               {label}
             </Link>
           )
         })}
         <button
           onClick={sair}
+          aria-label="Sair da área do cliente"
           className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg text-xs text-muted-foreground hover:text-destructive transition-colors"
         >
           <LogOut className="h-5 w-5" />

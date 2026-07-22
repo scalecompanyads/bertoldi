@@ -132,8 +132,9 @@ export default async function ProcessosPage({ searchParams }: Props) {
       </div>
 
       {queryError && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          Erro ao carregar processos: {queryError.message}
+        <div role="alert" className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          Erro ao carregar processos: {queryError.message}.{' '}
+          <a href="" className="font-medium underline">Tentar novamente</a>
         </div>
       )}
 

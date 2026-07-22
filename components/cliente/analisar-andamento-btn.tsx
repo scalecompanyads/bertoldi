@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { analisarAndamento } from '@/lib/actions/verificar-processo'
 import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
 import { ProcessoCapa } from '@/components/shared/processo-capa'
+import { DatajudTransparencia } from '@/components/shared/datajud-transparencia'
 import type { DatajudCapa } from '@/lib/datajud'
 
 interface Movimento {
@@ -28,6 +29,7 @@ export function AnalisarAndamentoBtn({
   const [ultimoAndamento, setUltimoAndamento] = useState<string | null>(null)
   const [novo, setNovo] = useState(false)
   const [verificadoEm, setVerificadoEm] = useState<string | null>(null)
+  const [fonte, setFonte] = useState<string | null>(null)
   const resultadoRef = useRef<HTMLDivElement>(null)
 
   // Busca automaticamente quando não há cache salvo
@@ -48,6 +50,7 @@ export function AnalisarAndamentoBtn({
       setUltimoAndamento(res.ultimoAndamento ?? null)
       setNovo(res.houve_movimentacao ?? false)
       setVerificadoEm(res.verificadoEm ?? null)
+      setFonte(res.fonte ?? null)
 
       if (res.doCache) {
         toast.info(`Dados atualizados ${res.fonte}.`)
@@ -113,6 +116,8 @@ export function AnalisarAndamentoBtn({
               )}
             </div>
           </div>
+
+          <DatajudTransparencia fonte={fonte} verificadoEm={verificadoEm} compacta />
 
           {/* Dados de capa do processo */}
           {capa && <ProcessoCapa capa={capa} />}

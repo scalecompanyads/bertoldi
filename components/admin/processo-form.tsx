@@ -12,19 +12,21 @@ import { buscarCapaTribunal } from '@/lib/actions/datajud'
 import { identificarTribunal, formatarNumeroCNJ, validarFormatoCNJ } from '@/lib/cnj-parser'
 import { TribunalBadge } from '@/components/admin/tribunal-badge'
 import { Landmark, Loader2 } from 'lucide-react'
-import type { Processo, Usuario } from '@/lib/types'
+import type { CalendarioForense, Processo, Usuario } from '@/lib/types'
 
 interface Props {
   clienteId: string
   processo?: Processo
   advogados?: Pick<Usuario, 'id' | 'nome'>[]
+  calendarios?: Pick<CalendarioForense, 'id' | 'nome' | 'uf' | 'comarca'>[]
 }
 
-export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
+export function ProcessoForm({ clienteId, processo, advogados = [], calendarios = [] }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState(processo?.status_interno ?? 'triagem')
   const [responsavel, setResponsavel] = useState(processo?.responsavel_id ?? '')
+  const [calendarioId, setCalendarioId] = useState(processo?.calendario_forense_id ?? '')
   const [notificarCliente, setNotificarCliente] = useState(processo?.notificar_cliente ?? false)
   const [numeroCNJ, setNumeroCNJ] = useState(processo?.numero_cnj ?? '')
   const [tribunal, setTribunal] = useState(processo?.tribunal ?? '')
@@ -82,6 +84,7 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
     const fd = new FormData(e.currentTarget)
     fd.set('status_interno', status)
     fd.set('responsavel_id', responsavel)
+    fd.set('calendario_forense_id', calendarioId)
     fd.set('numero_cnj', numeroCNJ)
     fd.set('tribunal', tribunal)
     fd.set('notificar_cliente', notificarCliente ? 'true' : 'false')
@@ -217,6 +220,25 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+      {calendarios.length > 0 && (
+        <div className="space-y-1.5">
+          <Label>Calendário forense</Label>
+          <Select value={calendarioId || '__nacional__'} onValueChange={(v) => setCalendarioId(v === '__nacional__' ? '' : (v ?? ''))}>
+            <SelectTrigger><SelectValue placeholder="Somente feriados nacionais" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__nacional__">Somente feriados nacionais</SelectItem>
+              {calendarios.map(calendario => (
+                <SelectItem key={calendario.id} value={calendario.id}>
+                  {calendario.nome} · {calendario.uf}{calendario.comarca ? ` · ${calendario.comarca}` : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            A versão publicada será usada apenas para sugerir prazos; o advogado confirma a data.
+          </p>
         </div>
       )}
       <label className="flex items-start gap-2.5 rounded-lg border p-3 cursor-pointer">

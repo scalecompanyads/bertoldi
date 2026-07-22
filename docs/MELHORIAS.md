@@ -43,6 +43,9 @@ Como foi feito:
   admins), ao fim do cron do Datajud
 - Aviso ao cliente quando um andamento visível é publicado — controlado pelo toggle
   "Notificar cliente por e-mail" na ficha do processo (migration `0013`, desligado por padrão)
+- Comunicados globais ou individuais materializam um destinatário por cliente; leitura e
+  badge são independentes, e o e-mail usa chave idempotente por comunicado/cliente
+  (migration `20260722144041`)
 - Configuração: `RESEND_API_KEY` e `EMAIL_FROM` (ver `.env.example`); domínio precisa estar
   verificado no Resend para entregar a terceiros
 
@@ -54,13 +57,17 @@ Completa o ciclo intimação → prazo → tarefa. Junto com 1.1 e 1.2, forma o 
 
 Como foi feito:
 - `lib/prazos/`: dias úteis com tabela local de feriados nacionais (fixos + móveis pela
-  Páscoa/Meeus) — sem dependência de API externa. NÃO cobre feriados estaduais/municipais
-  nem recesso forense; por isso toda data sugerida passa pela confirmação do advogado
+  Páscoa/Meeus) — sem dependência de API externa. Feriados estaduais/municipais e recessos
+  vêm de calendários forenses versionados cadastrados pelo escritório; a data sugerida
+  continua sendo confirmada pelo advogado antes de salvar
+- `/admin/calendarios`: admin cria rascunho com fonte oficial, adiciona dias/intervalos,
+  publica versão imutável e vincula o calendário ao processo
 - "Criar tarefa" na intimação abre diálogo: prazo em dias úteis (padrão 15) + vencimento
   calculado na sistemática do CPC (publicação no 1º dia útil após a disponibilização,
-  início no dia útil seguinte, só dias úteis) — data editável, ou "criar sem prazo"
+  início no dia útil seguinte, só dias úteis) — data editável, ou "criar sem prazo";
+  exibe versão, fonte e ocorrências locais aplicadas
 - Kanban: cor do prazo por dias úteis restantes (verde > 5, amarelo 2–5, vermelho < 2 ou
-  vencido), com rótulo "restam N dias úteis"
+  vencido), com rótulo "restam N dias úteis" e metadados de `prazo_contexto`
 - Cron `/api/cron/prazos` (dias úteis, 7h BRT): digest por membro da equipe com tarefas
   vencidas, vencendo hoje e vencendo no próximo dia útil, via `lib/email`
 
@@ -164,6 +171,12 @@ em processos, clientes, documentos e linha_do_tempo, gravando só os campos alte
 jsonb `{campo: {de, para}}` (updates redundantes não geram log; `usuario_id` null indica
 rotina automática). Tela `/admin/auditoria` (só admins): últimas 100 alterações com diff
 expansível de/para. Leitura via RLS restrita a admin; ninguém insere pelo cliente.
+
+### ✅ 4.5 Transparência das consultas — IMPLEMENTADO
+
+Aviso padronizado nas áreas interna e do cliente informa a fonte, a última consulta e que a
+cobertura/frequência variam por tribunal. O texto acompanha tanto o histórico automático
+quanto o resultado de consultas manuais.
 
 ---
 

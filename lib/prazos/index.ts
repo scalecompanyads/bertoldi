@@ -67,31 +67,32 @@ export function feriadosNacionais(ano: number): Set<string> {
   return set
 }
 
-export function isDiaUtil(d: Date): boolean {
+export function isDiaUtil(d: Date, diasNaoUteis = new Set<string>()): boolean {
   const dow = d.getDay()
   if (dow === 0 || dow === 6) return false
-  return !feriadosNacionais(d.getFullYear()).has(chave(d))
+  const data = chave(d)
+  return !feriadosNacionais(d.getFullYear()).has(data) && !diasNaoUteis.has(data)
 }
 
 // Próximo dia útil estritamente depois de `d`
-export function proximoDiaUtil(d: Date): Date {
+export function proximoDiaUtil(d: Date, diasNaoUteis = new Set<string>()): Date {
   const r = new Date(d)
   do {
     r.setDate(r.getDate() + 1)
-  } while (!isDiaUtil(r))
+  } while (!isDiaUtil(r, diasNaoUteis))
   return r
 }
 
 // Avança `dias` dias úteis a partir de `d` (exclusivo — o próprio `d` não conta)
-export function adicionarDiasUteis(d: Date, dias: number): Date {
+export function adicionarDiasUteis(d: Date, dias: number, diasNaoUteis = new Set<string>()): Date {
   let r = new Date(d)
-  for (let i = 0; i < dias; i++) r = proximoDiaUtil(r)
+  for (let i = 0; i < dias; i++) r = proximoDiaUtil(r, diasNaoUteis)
   return r
 }
 
 // Dias úteis restantes até `prazo` (0 = vence hoje; negativo = vencido).
 // Conta os dias úteis estritamente depois de hoje até a data do prazo.
-export function diasUteisRestantes(prazo: Date, hoje = new Date()): number {
+export function diasUteisRestantes(prazo: Date, hoje = new Date(), diasNaoUteis = new Set<string>()): number {
   const ini = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
   const fim = new Date(prazo.getFullYear(), prazo.getMonth(), prazo.getDate())
   if (fim.getTime() < ini.getTime()) return -1
@@ -99,7 +100,7 @@ export function diasUteisRestantes(prazo: Date, hoje = new Date()): number {
   const cursor = new Date(ini)
   while (cursor.getTime() < fim.getTime()) {
     cursor.setDate(cursor.getDate() + 1)
-    if (isDiaUtil(cursor)) count++
+    if (isDiaUtil(cursor, diasNaoUteis)) count++
   }
   return count
 }
@@ -110,11 +111,15 @@ export function diasUteisRestantes(prazo: Date, hoje = new Date()): number {
 //   - o prazo começa no 1º dia útil seguinte à publicação;
 //   - contam-se só os dias úteis, incluindo o dia do vencimento.
 // `disponibilizacao` em formato aaaa-mm-dd (date pura, sem hora).
-export function vencimentoPrazoDJEN(disponibilizacao: string, diasUteis: number): Date {
+export function vencimentoPrazoDJEN(
+  disponibilizacao: string,
+  diasUteis: number,
+  diasNaoUteis = new Set<string>()
+): Date {
   const [a, m, d] = disponibilizacao.split('-').map(Number)
   const disp = new Date(a, m - 1, d)
-  const publicacao = proximoDiaUtil(disp)
-  const inicio = proximoDiaUtil(publicacao)
+  const publicacao = proximoDiaUtil(disp, diasNaoUteis)
+  const inicio = proximoDiaUtil(publicacao, diasNaoUteis)
   // O dia do início é o 1º dia do prazo
-  return diasUteis <= 1 ? inicio : adicionarDiasUteis(inicio, diasUteis - 1)
+  return diasUteis <= 1 ? inicio : adicionarDiasUteis(inicio, diasUteis - 1, diasNaoUteis)
 }

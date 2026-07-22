@@ -22,6 +22,7 @@ export async function enviarEmail(params: {
   para: string | string[]
   assunto: string
   html: string
+  idempotencyKey?: string
 }): Promise<EnvioResult> {
   if (!emailConfigurado()) return { ok: false, pulado: true }
 
@@ -31,6 +32,7 @@ export async function enviarEmail(params: {
       headers: {
         Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
         'Content-Type': 'application/json',
+        ...(params.idempotencyKey ? { 'Idempotency-Key': params.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from: remetente(),
