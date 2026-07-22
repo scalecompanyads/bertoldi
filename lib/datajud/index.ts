@@ -108,6 +108,8 @@ export interface Movimento {
   hora?: string
   descricao: string
   orgao?: string
+  // Código nacional do movimento (TPU/CNJ) — usado na tradução para o cliente
+  codigo?: number
 }
 
 // Dados de capa do processo conforme registrados no tribunal
@@ -232,7 +234,7 @@ export async function consultarDatajud(
       const complemento = m.complementosTabelados?.length
         ? ` — ${m.complementosTabelados.map(c => c.nome ?? c.valor).filter(Boolean).join(', ')}`
         : ''
-      return { data, hora, descricao: m.nome + complemento, orgao: m.orgaoJulgador?.nome }
+      return { data, hora, descricao: m.nome + complemento, orgao: m.orgaoJulgador?.nome, codigo: m.codigo }
     })
 
     const ultimoAndamento = movimentos[0]

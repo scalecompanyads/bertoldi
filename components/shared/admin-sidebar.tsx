@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, LayoutDashboard, LogOut, Scale, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog } from 'lucide-react'
+import { Users, LayoutDashboard, LogOut, Scale, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog, Upload, CalendarDays, History } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -15,7 +15,10 @@ const NAV = [
   { href: '/admin/clientes', label: 'Clientes', icon: Users, exact: false },
   { href: '/admin/comunicados', label: 'Comunicados', icon: Bell, exact: false },
   { href: '/admin/tarefas', label: 'Minhas tarefas', icon: SquareKanban, exact: false },
+  { href: '/admin/audiencias', label: 'Audiências', icon: CalendarDays, exact: false },
   { href: '/admin/equipe', label: 'Equipe', icon: UserCog, exact: false },
+  { href: '/admin/importar', label: 'Importar', icon: Upload, exact: false },
+  { href: '/admin/auditoria', label: 'Auditoria', icon: History, exact: false },
 ]
 
 export function AdminSidebar() {

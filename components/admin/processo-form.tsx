@@ -8,8 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { criarProcesso, atualizarProcesso } from '@/lib/actions/processos'
+import { buscarCapaTribunal } from '@/lib/actions/datajud'
 import { identificarTribunal, formatarNumeroCNJ, validarFormatoCNJ } from '@/lib/cnj-parser'
 import { TribunalBadge } from '@/components/admin/tribunal-badge'
+import { Landmark, Loader2 } from 'lucide-react'
 import type { Processo, Usuario } from '@/lib/types'
 
 interface Props {
@@ -26,6 +28,30 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
   const [notificarCliente, setNotificarCliente] = useState(processo?.notificar_cliente ?? false)
   const [numeroCNJ, setNumeroCNJ] = useState(processo?.numero_cnj ?? '')
   const [tribunal, setTribunal] = useState(processo?.tribunal ?? '')
+  // Controlados para o "Buscar dados do tribunal" poder preenchê-los
+  const [varaOrgao, setVaraOrgao] = useState(processo?.vara_orgao ?? '')
+  const [assunto, setAssunto] = useState(processo?.assunto ?? '')
+  const [dataAjuizamento, setDataAjuizamento] = useState(processo?.data_ajuizamento ?? '')
+  const [buscandoCapa, setBuscandoCapa] = useState(false)
+
+  async function buscarCapa() {
+    setBuscandoCapa(true)
+    const res = await buscarCapaTribunal(numeroCNJ)
+    if ('error' in res && res.error) {
+      toast.error(res.error)
+    } else if ('ok' in res) {
+      if (res.assunto) setAssunto(res.assunto)
+      if (res.varaOrgao) setVaraOrgao(res.varaOrgao)
+      if (res.dataAjuizamento) setDataAjuizamento(res.dataAjuizamento)
+      const preenchidos = [res.assunto && 'assunto', res.varaOrgao && 'vara/órgão', res.dataAjuizamento && 'data de ajuizamento']
+        .filter(Boolean)
+        .join(', ')
+      toast.success(preenchidos
+        ? `Dados do tribunal: ${preenchidos}. Confira antes de salvar.`
+        : 'Processo encontrado, mas o tribunal não enviou dados de capa.')
+    }
+    setBuscandoCapa(false)
+  }
 
   function handleCNJChange(value: string) {
     setNumeroCNJ(value)
@@ -94,7 +120,16 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
           placeholder="0000000-00.0000.0.00.0000"
           className="font-mono"
         />
-        {cnjValido && <TribunalBadge numero={numeroCNJ} />}
+        {cnjValido && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <TribunalBadge numero={numeroCNJ} />
+            <Button type="button" size="sm" variant="outline" onClick={buscarCapa} disabled={buscandoCapa}>
+              {buscandoCapa
+                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Consultando... (pode levar até 1 min)</>
+                : <><Landmark className="h-3.5 w-3.5" /> Buscar dados do tribunal</>}
+            </Button>
+          </div>
+        )}
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
@@ -109,7 +144,7 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="vara_orgao">Vara / Órgão</Label>
-          <Input id="vara_orgao" name="vara_orgao" defaultValue={processo?.vara_orgao ?? ''} />
+          <Input id="vara_orgao" name="vara_orgao" value={varaOrgao} onChange={(e) => setVaraOrgao(e.target.value)} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -129,7 +164,7 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="assunto">Assunto</Label>
-          <Input id="assunto" name="assunto" defaultValue={processo?.assunto ?? ''} placeholder="Ex: Indenização por Dano Moral" />
+          <Input id="assunto" name="assunto" value={assunto} onChange={(e) => setAssunto(e.target.value)} placeholder="Ex: Indenização por Dano Moral" />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="valor_causa">Valor da causa</Label>
@@ -145,7 +180,7 @@ export function ProcessoForm({ clienteId, processo, advogados = [] }: Props) {
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label htmlFor="data_ajuizamento">Data de ajuizamento</Label>
-          <Input id="data_ajuizamento" name="data_ajuizamento" type="date" defaultValue={processo?.data_ajuizamento ?? ''} />
+          <Input id="data_ajuizamento" name="data_ajuizamento" type="date" value={dataAjuizamento} onChange={(e) => setDataAjuizamento(e.target.value)} />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="cidade_origem">Cidade de origem</Label>

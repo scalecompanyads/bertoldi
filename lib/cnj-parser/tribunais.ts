@@ -102,7 +102,7 @@ export const TRIBS: Tribunal[] = [
   // TJs eSAJ
   { id: 'tjsp',   nome: 'TJSP — 1º Grau', sigla: 'TJSP1g',  segmento: '8', url: 'https://esaj.tjsp.jus.br/cpopg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado={CNJ}&dadosConsulta.tipoNuProcesso=UNIFICADO' },
   { id: 'tjsp2g', nome: 'TJSP — 2º Grau', sigla: 'TJSP2g',  segmento: '8', url: 'https://esaj.tjsp.jus.br/cposg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado={CNJ}&dadosConsulta.tipoNuProcesso=UNIFICADO' },
-  { id: 'tjspeproc', nome: 'TJSP — eProc', sigla: 'TJSP-e', segmento: '826', url: 'https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=tjsp@consulta_unificada_publica/consultar&hash=ed2215016033e517baaf4ff37bd4c428' },
+  { id: 'tjspeproc', nome: 'TJSP — eProc', sigla: 'TJSP-e', segmento: '826', url: 'https://eproc-consulta.tjsp.jus.br/consulta_1g/externo_controlador.php?acao=processo_consulta_publica&num_processo={CNJ}' },
   { id: 'tjsc',   nome: 'TJSC — 1º Grau', sigla: 'TJSC1g',  segmento: '8', url: 'https://esaj.tjsc.jus.br/cpopg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado={CNJ}&dadosConsulta.tipoNuProcesso=UNIFICADO' },
   { id: 'tjsc2g', nome: 'TJSC — 2º Grau', sigla: 'TJSC2g',  segmento: '8', url: 'https://esaj.tjsc.jus.br/cposg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado={CNJ}&dadosConsulta.tipoNuProcesso=UNIFICADO' },
   { id: 'tjba',   nome: 'TJBA — 1º Grau', sigla: 'TJBA1g',  segmento: '8', url: 'https://esaj.tjba.jus.br/cpopg/search.do?cbPesquisa=NUMPROC&dadosConsulta.valorConsultaNuUnificado={CNJ}&dadosConsulta.tipoNuProcesso=UNIFICADO' },

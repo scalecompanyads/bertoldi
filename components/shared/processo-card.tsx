@@ -74,9 +74,11 @@ interface Props {
   novidade?: boolean
   // Exibido junto ao título — usado no painel interno para mostrar o cliente
   clienteNome?: string | null
+  // Variante estreita para grades com vários cards lado a lado
+  compacto?: boolean
 }
 
-export function ProcessoCard({ processo: p, href, ultimaVerificacao, novidade, clienteNome }: Props) {
+export function ProcessoCard({ processo: p, href, ultimaVerificacao, novidade, clienteNome, compacto }: Props) {
   const tribunal = nomeTribunal(p)
   const titulo = p.parte_autora && p.parte_re
     ? `${p.parte_autora} x ${p.parte_re}`
@@ -95,12 +97,14 @@ export function ProcessoCard({ processo: p, href, ultimaVerificacao, novidade, c
   return (
     <Link
       href={href}
-      className="block rounded-xl border bg-card p-5 sm:p-6 hover:bg-accent transition-colors space-y-4"
+      className={`block rounded-xl border bg-card hover:bg-accent transition-colors ${
+        compacto ? 'p-4 space-y-3' : 'p-5 sm:p-6 space-y-4'
+      }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1.5">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm px-2.5 py-0.5 rounded-full font-medium ${STATUS_COR[p.status_interno]}`}>
+            <span className={`${compacto ? 'text-xs' : 'text-sm'} px-2.5 py-0.5 rounded-full font-medium ${STATUS_COR[p.status_interno]}`}>
               {STATUS_PROCESSO_LABEL[p.status_interno]}
             </span>
             {novidade && (
@@ -109,11 +113,11 @@ export function ProcessoCard({ processo: p, href, ultimaVerificacao, novidade, c
               </span>
             )}
           </div>
-          <p className="font-semibold text-lg leading-snug">
+          <p className={`font-semibold leading-snug ${compacto ? 'text-sm line-clamp-2' : 'text-lg'}`}>
             {titulo}
             {clienteNome && <span className="text-muted-foreground font-normal"> · {clienteNome}</span>}
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className={`text-muted-foreground ${compacto ? 'text-xs' : 'text-sm'}`}>
             {p.numero_cnj
               ? <>Processo <span className="font-mono">{p.numero_cnj}</span></>
               : p.tipo_servico}
@@ -123,17 +127,20 @@ export function ProcessoCard({ processo: p, href, ultimaVerificacao, novidade, c
       </div>
 
       {detalhes.length > 0 && (
-        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+        <dl className={compacto
+          ? 'grid grid-cols-1 gap-y-2'
+          : 'grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4'}
+        >
           {detalhes.map((d) => (
             <div key={d.label} className="min-w-0">
               <dt className="text-xs uppercase tracking-wide text-muted-foreground">{d.label}</dt>
-              <dd className="text-sm font-medium mt-0.5">{d.valor}</dd>
+              <dd className={`font-medium mt-0.5 ${compacto ? 'text-xs truncate' : 'text-sm'}`}>{d.valor}</dd>
             </div>
           ))}
         </dl>
       )}
 
-      {resumo && (
+      {resumo && !compacto && (
         <p className="text-sm text-muted-foreground leading-relaxed border-t pt-4">{resumo}</p>
       )}
     </Link>

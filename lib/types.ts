@@ -183,3 +183,30 @@ export const STATUS_INTIMACAO_LABEL: Record<StatusIntimacao, string> = {
   lida: 'Lida',
   tratada: 'Tratada',
 }
+
+export type TipoAudiencia = 'conciliacao' | 'instrucao' | 'julgamento' | 'una' | 'justificacao' | 'outra'
+
+export interface Audiencia {
+  id: string
+  processo_id: string | null
+  tipo: TipoAudiencia
+  data_hora: string
+  local: string | null
+  link_video: string | null
+  observacoes: string | null
+  criado_por: string | null
+  criado_em: string
+  atualizado_em: string | null
+  processo?: (Pick<Processo, 'id' | 'cliente_id' | 'numero_cnj' | 'tipo_servico'> & {
+    clientes?: Pick<Cliente, 'id' | 'nome'>
+  }) | null
+}
+
+export const TIPO_AUDIENCIA_LABEL: Record<TipoAudiencia, string> = {
+  conciliacao: 'Conciliação',
+  instrucao: 'Instrução',
+  julgamento: 'Julgamento',
+  una: 'Una',
+  justificacao: 'Justificação',
+  outra: 'Outra',
+}

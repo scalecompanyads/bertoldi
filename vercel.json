@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/djen",
       "schedule": "0 10 * * 1-5"
+    },
+    {
+      "path": "/api/cron/importacao",
+      "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/prazos",
+      "schedule": "0 10 * * 1-5"
     }
   ]
 }

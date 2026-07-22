@@ -46,60 +46,68 @@ Como foi feito:
 - Configuração: `RESEND_API_KEY` e `EMAIL_FROM` (ver `.env.example`); domínio precisa estar
   verificado no Resend para entregar a terceiros
 
-### ⬜ 1.3 Prazos com alerta escalonado — PENDENTE
+### ✅ 1.3 Prazos com alerta escalonado — IMPLEMENTADO
 
 O que é: transformar intimação em tarefa com prazo contado e alerta visual/por e-mail.
 Completa o ciclo intimação → prazo → tarefa. Junto com 1.1 e 1.2, forma o argumento
 "nenhum prazo passa em branco".
 
-Como fazer:
-- O kanban de tarefas já tem campo `prazo` — falta o cálculo: contagem em dias úteis exige
-  tabela de feriados nacionais + estaduais (avaliar API BrasilAPI `/feriados` ou tabela local)
-- Ao criar tarefa a partir da intimação, sugerir prazo (o advogado confirma — contagem de
-  prazo processual é decisão jurídica, nunca automática silenciosa)
-- Alerta visual no painel: verde > 5 dias, amarelo 2–5, vermelho < 2
-- E-mail "prazo vence amanhã" (reaproveitar `lib/email`)
-- Esforço estimado: ~2 dias
+Como foi feito:
+- `lib/prazos/`: dias úteis com tabela local de feriados nacionais (fixos + móveis pela
+  Páscoa/Meeus) — sem dependência de API externa. NÃO cobre feriados estaduais/municipais
+  nem recesso forense; por isso toda data sugerida passa pela confirmação do advogado
+- "Criar tarefa" na intimação abre diálogo: prazo em dias úteis (padrão 15) + vencimento
+  calculado na sistemática do CPC (publicação no 1º dia útil após a disponibilização,
+  início no dia útil seguinte, só dias úteis) — data editável, ou "criar sem prazo"
+- Kanban: cor do prazo por dias úteis restantes (verde > 5, amarelo 2–5, vermelho < 2 ou
+  vencido), com rótulo "restam N dias úteis"
+- Cron `/api/cron/prazos` (dias úteis, 7h BRT): digest por membro da equipe com tarefas
+  vencidas, vencendo hoje e vencendo no próximo dia útil, via `lib/email`
 
 ---
 
 ## Dor nº 2 — Adoção: ninguém vai cadastrar 3.000 processos à mão
 
-### ⬜ 2.1 Importação em massa — PENDENTE (crítico para entrar em produção)
+### ✅ 2.1 Importação em massa — IMPLEMENTADO
 
-O que é: upload de CSV/planilha (número CNJ + CPF do cliente + tipo de serviço) criando
-clientes e processos em lote.
+O que é: upload de CSV/planilha (número CNJ + CPF do cliente + nome + tipo de serviço)
+criando clientes e processos em lote.
 
-Como fazer:
-- Tela de upload no admin com prévia e validação linha a linha (CNJ válido, CPF válido)
-- Para cada linha, o Datajud preenche automaticamente classe, assunto, vara e data de
-  ajuizamento (a infra da capa já existe em `lib/datajud`)
-- Processar em lotes com pausa (a API do Datajud é lenta — 30s+ por consulta em índices
-  grandes); considerar fila simples via tabela + cron em vez de processar no request
-- Esforço estimado: ~2 dias
+Como foi feito:
+- Migration `0014`: tabela `fila_capa` (fila de preenchimento da capa, RLS restrita à equipe)
+- Tela `/admin/importar`: colar ou subir CSV (separador `;`, `,` ou tab, cabeçalho opcional),
+  prévia com validação linha a linha (formato CNJ, dígito verificador do CPF), resultado por
+  linha após a importação e status da fila com botão "Processar fila agora"
+- `lib/actions/importacao.ts`: reaproveita cliente pelo CPF/CNPJ ou cria; pula processo com
+  CNJ já cadastrado; tribunal identificado pelo próprio número; limite de 500 linhas por lote
+- Capa via fila + cron (`/api/cron/importacao`, de hora em hora, orçamento de tempo): a API do
+  Datajud é lenta demais para rodar no request. Preenche assunto, vara e data de ajuizamento,
+  e grava a verificação-baseline para o cron diário detectar movimentações desde a importação
 
-### ⬜ 2.2 Auto-preenchimento da capa no cadastro individual — PENDENTE
+### ✅ 2.2 Auto-preenchimento da capa no cadastro individual — IMPLEMENTADO
 
 O que é: digitou o CNJ no formulário → botão "Buscar dados do tribunal" preenche assunto,
-vara, data de ajuizamento e cidade.
+vara/órgão e data de ajuizamento.
 
-Como fazer: chamar `consultarDatajud` no `processo-form` (a capa já vem pronta); mapear
-`capa.assuntos` → `assunto`, `capa.orgaoJulgador` → `vara_orgao`, `capa.dataAjuizamento` →
-`data_ajuizamento`. Esforço: ~meio dia.
+Como foi feito: action `buscarCapaTribunal` em `lib/actions/datajud.ts` (restrita à equipe;
+identifica o tribunal pelo número e avisa quando não há cobertura no Datajud) + botão no
+`processo-form` ao lado do badge do tribunal. Os campos preenchidos ficam editáveis — o
+advogado confere antes de salvar. Cidade não vem na API pública; segue manual.
 
 ---
 
 ## Dor nº 3 — O cliente que liga toda semana perguntando "e meu processo?"
 
-### ⬜ 3.1 Tradução de juridiquês — PENDENTE
+### ✅ 3.1 Tradução de juridiquês — IMPLEMENTADO
 
 O que é: "Conclusos para despacho" não significa nada para o cliente. Exibir versão simples
 para o cliente, técnica para o advogado.
 
-Como fazer: os movimentos do Datajud vêm com código nacional padronizado (TPU/CNJ) — manter
-tabela de-para dos ~50 códigos mais comuns em `lib/` (ex: código 51 "Conclusão" → "O processo
-está com o juiz para análise"). O código do movimento já chega em `DatajudMovimento.codigo`;
-hoje só o nome é usado. Esforço: ~1 dia — alto impacto na percepção de cuidado.
+Como foi feito: `lib/tpu.ts` com de-para de ~50 códigos TPU/CNJ + fallback por nome do
+movimento (cobre verificações antigas gravadas sem código). O código passou a ser propagado
+em `Movimento.codigo` (lib/datajud). Na tela do cliente, a linha do tempo mostra a versão
+simples como texto principal e o registro técnico do tribunal em letra menor logo abaixo.
+O advogado segue vendo só o texto técnico. Movimento sem tradução exibe o original.
 
 ### ✅ 3.2 Dados completos do processo visíveis — IMPLEMENTADO
 
@@ -123,31 +131,39 @@ pessoa define a própria senha via link), editar papel e OAB inline, remover com
 imediata de acesso. Travas: o escritório nunca fica sem admin; ninguém remove a si mesmo.
 Aviso visual para advogado sem OAB (intimações não monitoradas).
 
-### ⬜ 4.2 Painel "visão do dia" — PENDENTE
+### ✅ 4.2 Painel "visão do dia" — IMPLEMENTADO
 
 O que é: a home do admin priorizada por urgência — intimações não lidas, prazos da semana,
 processos com movimentação nova desde ontem.
 
-Como fazer: reescrever `/admin/page.tsx` com 3 blocos de consulta (intimações `nao_lida`,
-tarefas com prazo < 7 dias, verificações com `houve_movimentacao` nas últimas 24h).
-Esforço: ~1 dia.
+Como foi feito: `/admin/page.tsx` abre com 3 blocos clicáveis lado a lado — intimações
+`nao_lida` (contagem + 5 mais recentes), "Meus prazos da semana" (tarefas do usuário com
+prazo em até 7 dias, coloridas pelo escalonamento de dias úteis do 1.3) e movimentações
+das últimas 24h. Os KPIs e as listas que já existiam continuam logo abaixo.
 
-### ⬜ 4.3 Agenda de audiências — PENDENTE
+### ✅ 4.3 Agenda de audiências — IMPLEMENTADO
 
 O que é: tabela `audiencias` (data/hora, tipo, local ou link de vídeo, processo) com
 lembrete por e-mail e exportação ICS para Google Calendar.
 
-Como fazer: o Datajud não traz audiências de forma confiável — cadastro manual, mas
-centralizado. Migration + CRUD + rota `/api/ics` gerando o arquivo. Lembrete via cron
-existente. Esforço: ~1,5 dia.
+Como foi feito:
+- Migration `0015`: tabela `audiencias` (tipo enum: conciliação/instrução/julgamento/una/
+  justificação/outra, local e/ou link de vídeo, vínculo opcional ao processo, RLS de equipe)
+- Tela `/admin/audiencias`: próximas + últimas 10 realizadas, agendar/editar/remover em diálogo
+- Rota `/api/ics` (sessão de equipe): exporta a agenda como iCalendar com alarme de 1 dia
+- Lembrete no cron de prazos (7h BRT, dias úteis): e-mail à equipe com as audiências de
+  hoje e do próximo dia útil
 
-### ⬜ 4.4 Auditoria — PENDENTE
+### ✅ 4.4 Auditoria — IMPLEMENTADO
 
 O que é: tabela `logs_auditoria` (quem alterou o quê e quando) — o escritório precisa disso
 quando algo dá errado. Hoje só há `atualizado_por`/`atualizado_em` em campos sensíveis.
 
-Como fazer: trigger `after update` nas tabelas sensíveis (processos, documentos,
-linha_do_tempo) gravando diff em jsonb, + tela de consulta no admin. Esforço: ~1 dia.
+Como foi feito: migration `0016` — tabela `logs_auditoria` + trigger `after update or delete`
+em processos, clientes, documentos e linha_do_tempo, gravando só os campos alterados em
+jsonb `{campo: {de, para}}` (updates redundantes não geram log; `usuario_id` null indica
+rotina automática). Tela `/admin/auditoria` (só admins): últimas 100 alterações com diff
+expansível de/para. Leitura via RLS restrita a admin; ninguém insere pelo cliente.
 
 ---
 
@@ -165,21 +181,14 @@ linha_do_tempo) gravando diff em jsonb, + tela de consulta no admin. Esforço: ~
 
 ## Ordem sugerida para o que resta
 
-| # | Item | Esforço | Por quê nessa ordem |
-|---|------|---------|---------------------|
-| 1 | 2.1 Importação em massa | ~2 dias | Sem ela o sistema não entra em produção de verdade |
-| 2 | 1.3 Prazos com alerta | ~2 dias | Completa o ciclo intimação → prazo → tarefa |
-| 3 | 2.2 Capa no cadastro | ~0,5 dia | Ganho rápido, infra pronta |
-| 4 | 3.1 Tradução de juridiquês | ~1 dia | Reduz ligações; cliente se sente cuidado |
-| 5 | 4.2 Painel visão do dia | ~1 dia | Urgência visível ao abrir o sistema |
-| 6 | 4.3 Agenda de audiências | ~1,5 dia | Centraliza o que hoje vive no Google Calendar |
-| 7 | 4.4 Auditoria | ~1 dia | Importa quando o volume de uso crescer |
+Todos os itens deste documento foram implementados (julho/2026). O que segue em aberto
+está em `BACKLOG_FASE2.md` (WhatsApp, busca por parte via API paga, relatórios).
 
 ---
 
 ## Configuração única no deploy (depois disso, o escritório toca sozinho)
 
-1. Migrations `0012` e `0013` no SQL Editor do Supabase
+1. Migrations `0012` a `0016` no SQL Editor do Supabase
 2. Variáveis na Vercel: `DATAJUD_API_KEY` (chave pública da wiki do CNJ), `RESEND_API_KEY`,
    `EMAIL_FROM` (domínio verificado no Resend) — ver `.env.example`
 3. OAB dos advogados: pela própria plataforma, em **Equipe**

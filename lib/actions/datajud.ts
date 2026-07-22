@@ -3,8 +3,50 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { consultarDatajud, tribunalCobertoPorDatajud, motivoNaoCobertoDatajud } from '@/lib/datajud'
-import { identificarTribunal } from '@/lib/cnj-parser'
+import { identificarTribunal, validarFormatoCNJ } from '@/lib/cnj-parser'
 import { mesmoAndamento } from '@/lib/andamento'
+import { assertEquipe } from '@/lib/actions/assert-equipe'
+
+// Auto-preenchimento da capa no cadastro individual (item 2.2 do MELHORIAS.md):
+// botão "Buscar dados do tribunal" no formulário de processo.
+export async function buscarCapaTribunal(numeroCnj: string) {
+  const auth = await assertEquipe()
+  if ('error' in auth) return { error: auth.error }
+
+  if (!validarFormatoCNJ(numeroCnj)) {
+    return { error: 'Número CNJ em formato inválido.' }
+  }
+
+  const resultado = identificarTribunal(numeroCnj)
+  if (!resultado?.tribunal) {
+    return { error: 'Tribunal não identificado pelo número CNJ. Verifique o número.' }
+  }
+
+  const motivo = motivoNaoCobertoDatajud(resultado.tribunal.id)
+  if (motivo || !tribunalCobertoPorDatajud(resultado.tribunal.id)) {
+    return {
+      error: `${resultado.tribunal.sigla} não está disponível no Datajud — usa ${motivo ?? 'sistema próprio'}. Preencha a capa manualmente.`,
+    }
+  }
+
+  const { encontrado, capa, erro } = await consultarDatajud(numeroCnj, resultado.tribunal.id)
+
+  if (erro && !encontrado) return { error: `Datajud: ${erro}` }
+  if (!encontrado || !capa) {
+    return { error: 'Processo não encontrado no Datajud. O tribunal pode ainda não ter enviado os dados.' }
+  }
+
+  // dataAjuizamento chega como dd/mm/aaaa; o input type=date espera aaaa-mm-dd
+  const m = capa.dataAjuizamento?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+
+  return {
+    ok: true as const,
+    assunto: capa.assuntos?.length ? capa.assuntos.join(', ') : null,
+    varaOrgao: capa.orgaoJulgador ?? null,
+    dataAjuizamento: m ? `${m[3]}-${m[2]}-${m[1]}` : null,
+    classe: capa.classe ?? null,
+  }
+}
 
 export async function verificarProcessoDatajud(processoId: string, clienteId: string) {
   const supabase = await createClient()

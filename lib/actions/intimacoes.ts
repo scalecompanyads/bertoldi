@@ -195,11 +195,16 @@ export async function marcarIntimacao(id: string, status: StatusIntimacao) {
 }
 
 // Cria uma tarefa no kanban do usuário logado a partir da intimação e a marca
-// como tratada. O prazo fica em branco de propósito: contagem de prazo
-// processual é decisão jurídica — o advogado define ao revisar a tarefa.
-export async function criarTarefaDeIntimacao(intimacaoId: string) {
+// como tratada. `prazoISO` vem do diálogo onde o advogado confirmou (ou editou)
+// a data sugerida — contagem de prazo processual é decisão jurídica, o sistema
+// só sugere, nunca define sozinho.
+export async function criarTarefaDeIntimacao(intimacaoId: string, prazoISO?: string | null) {
   const auth = await assertEquipe()
   if ('error' in auth) return { error: auth.error }
+
+  if (prazoISO && Number.isNaN(new Date(prazoISO).getTime())) {
+    return { error: 'Data de prazo inválida.' }
+  }
 
   const supabase = await createClient()
 
@@ -231,6 +236,7 @@ export async function criarTarefaDeIntimacao(intimacaoId: string) {
     titulo,
     descricao: (intimacao.texto ?? '').slice(0, 500) || null,
     processo_id: intimacao.processo_id,
+    prazo: prazoISO || null,
     status: 'a_fazer',
     ordem: (primeira?.ordem ?? 1) - 1,
   })

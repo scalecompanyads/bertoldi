@@ -1,6 +1,7 @@
 'use client'
 
 import { ExternalLink } from 'lucide-react'
+import { toast } from 'sonner'
 import { identificarTribunal } from '@/lib/cnj-parser'
 
 interface TribunalBadgeProps {
@@ -30,6 +31,13 @@ export function TribunalBadge({ numero }: TribunalBadgeProps) {
           href={urlPortal}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() => {
+            // Nem todo portal aceita o número pela URL (captcha, formulário) —
+            // copia junto para o advogado só colar no campo de busca
+            navigator.clipboard?.writeText(resultado.numero.formatted)
+              .then(() => toast.info('Número do processo copiado — se o portal não preencher sozinho, é só colar.'))
+              .catch(() => {})
+          }}
           className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90 shrink-0"
         >
           Abrir no portal

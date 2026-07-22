@@ -139,7 +139,7 @@ export default async function ProcessosPage({ searchParams }: Props) {
 
       {!queryError && (
         lista.length > 0 ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
             {lista.map((p) => (
               <ProcessoCard
                 key={p.id}
@@ -147,6 +147,7 @@ export default async function ProcessosPage({ searchParams }: Props) {
                 href={`/admin/clientes/${p.cliente_id}/processos/${p.id}`}
                 clienteNome={p.clientes?.nome}
                 ultimaVerificacao={ultimaVerificacao.get(p.id)}
+                compacto
               />
             ))}
           </div>

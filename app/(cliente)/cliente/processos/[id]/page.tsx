@@ -6,6 +6,7 @@ import { STATUS_PROCESSO_LABEL, TIPO_DOCUMENTO_LABEL } from '@/lib/types'
 import { DocumentoDownloadBtn } from '@/components/cliente/documento-download-btn'
 import { AnalisarAndamentoBtn } from '@/components/cliente/analisar-andamento-btn'
 import { ProcessoCapa } from '@/components/shared/processo-capa'
+import { traduzirMovimento } from '@/lib/tpu'
 import type { DatajudCapa } from '@/lib/datajud'
 import { ProcessoEtapas } from '@/components/cliente/processo-etapas'
 import type { Processo, EventoLinhaDotTempo, Documento, Observacao, StatusProcesso } from '@/lib/types'
@@ -36,6 +37,8 @@ type ItemTimeline = {
   dataISO: string
   descricao: string
   origem: 'escritorio' | 'tribunal'
+  // Versão em linguagem simples (TPU traduzida) — o texto técnico vira apoio
+  traducao?: string | null
 }
 
 function brParaISO(data: string): string | null {
@@ -75,7 +78,7 @@ export default async function ProcessoClientePage({ params }: Props) {
 
   // ---- Linha do tempo unificada: eventos do escritório + movimentos do tribunal ----
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const movs = ((ultimaVerificacao?.raw_response as any)?.movimentos ?? []) as { data: string; descricao: string }[]
+  const movs = ((ultimaVerificacao?.raw_response as any)?.movimentos ?? []) as { data: string; descricao: string; codigo?: number }[]
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const capa = ((ultimaVerificacao?.raw_response as any)?.capa ?? null) as DatajudCapa | null
 
@@ -87,7 +90,13 @@ export default async function ProcessoClientePage({ params }: Props) {
     if (!dataISO) return
     // não repete movimento que o escritório já publicou como evento
     if (jaPublicado.has(`${dataISO}|${mv.descricao}`)) return
-    itensTribunal.push({ chave: `mv-${i}`, dataISO, descricao: mv.descricao, origem: 'tribunal' })
+    itensTribunal.push({
+      chave: `mv-${i}`,
+      dataISO,
+      descricao: mv.descricao,
+      origem: 'tribunal',
+      traducao: traduzirMovimento(mv.codigo, mv.descricao),
+    })
   })
 
   const timeline: ItemTimeline[] = [
@@ -191,7 +200,14 @@ export default async function ProcessoClientePage({ params }: Props) {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm mt-0.5 leading-relaxed">{item.descricao}</p>
+                      {item.traducao ? (
+                        <>
+                          <p className="text-sm mt-0.5 leading-relaxed">{item.traducao}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">Registro do tribunal: {item.descricao}</p>
+                        </>
+                      ) : (
+                        <p className="text-sm mt-0.5 leading-relaxed">{item.descricao}</p>
+                      )}
                     </div>
                   </div>
                 )

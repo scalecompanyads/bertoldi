@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { criarTarefa, atualizarTarefa, moverTarefa, excluirTarefa } from '@/lib/actions/tarefas'
+import { diasUteisRestantes } from '@/lib/prazos'
 import { STATUS_TAREFA_LABEL } from '@/lib/types'
 import type { Tarefa, StatusTarefa, Processo, Cliente } from '@/lib/types'
 
@@ -33,22 +34,34 @@ type ProcessoOpcao = Pick<Processo, 'id' | 'numero_cnj' | 'tipo_servico'> & {
   clientes?: Pick<Cliente, 'id' | 'nome'>
 }
 
-// Classificação do prazo para cor e texto do card
+// Classificação do prazo para cor e texto do card — alerta escalonado por
+// dias úteis restantes: verde > 5, amarelo 2–5, vermelho < 2 (ou vencido)
 function infoPrazo(prazo: string | null, concluida: boolean) {
   if (!prazo) return null
-  const diffMs = new Date(prazo).getTime() - Date.now()
-  const texto = new Date(prazo).toLocaleString('pt-BR', {
+  const data = new Date(prazo)
+  const texto = data.toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
   if (concluida) return { texto, classe: 'text-muted-foreground' }
-  if (diffMs < 0) return { texto: `${texto} · vencido`, classe: 'text-red-600 dark:text-red-400 font-semibold' }
-  if (diffMs <= 2 * 3_600_000) {
-    const min = Math.max(1, Math.round(diffMs / 60_000))
-    const resta = min >= 60 ? `${Math.floor(min / 60)}h${min % 60 ? `${min % 60}min` : ''}` : `${min}min`
-    return { texto: `${texto} · faltam ${resta}`, classe: 'text-red-600 dark:text-red-400 font-semibold' }
+
+  if (data.getTime() < Date.now()) {
+    return { texto: `${texto} · vencido`, classe: 'text-red-600 dark:text-red-400 font-semibold' }
   }
-  if (diffMs <= 24 * 3_600_000) return { texto, classe: 'text-amber-600 dark:text-amber-400 font-medium' }
-  return { texto, classe: 'text-muted-foreground' }
+
+  const restantes = diasUteisRestantes(data)
+  const rotulo = restantes === 0
+    ? 'vence hoje'
+    : restantes === 1
+      ? 'resta 1 dia útil'
+      : `restam ${restantes} dias úteis`
+
+  if (restantes < 2) {
+    return { texto: `${texto} · ${rotulo}`, classe: 'text-red-600 dark:text-red-400 font-semibold' }
+  }
+  if (restantes <= 5) {
+    return { texto: `${texto} · ${rotulo}`, classe: 'text-amber-600 dark:text-amber-400 font-medium' }
+  }
+  return { texto: `${texto} · ${rotulo}`, classe: 'text-emerald-600 dark:text-emerald-400' }
 }
 
 // datetime-local usa hora local sem timezone; converter para ISO UTC antes de enviar
@@ -149,7 +162,7 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
               onDragOver={(e) => { e.preventDefault(); setColunaAlvo(status) }}
               onDragLeave={() => setColunaAlvo((c) => (c === status ? null : c))}
               onDrop={() => soltar(status)}
-              className={`rounded-xl border border-t-4 bg-card/50 transition-colors ${COLUNA_COR[status]} ${
+              className={`border border-t-4 bg-card/50 transition-colors ${COLUNA_COR[status]} ${
                 colunaAlvo === status && arrastando ? 'bg-accent' : ''
               }`}
             >
@@ -176,7 +189,7 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
                       draggable
                       onDragStart={() => setArrastando(t.id)}
                       onDragEnd={() => { setArrastando(null); setColunaAlvo(null) }}
-                      className={`group rounded-lg border bg-card p-3 space-y-2 cursor-grab active:cursor-grabbing shadow-sm ${
+                      className={`group border bg-card p-3 space-y-2 cursor-grab active:cursor-grabbing shadow-sm ${
                         arrastando === t.id ? 'opacity-50' : ''
                       }`}
                     >

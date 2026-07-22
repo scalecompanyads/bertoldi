@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
@@ -12,7 +12,17 @@ import {
   ListTodo,
   User,
 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { marcarIntimacao, criarTarefaDeIntimacao } from '@/lib/actions/intimacoes'
+import { vencimentoPrazoDJEN } from '@/lib/prazos'
 import type { Intimacao } from '@/lib/types'
 
 // data_disponibilizacao é date pura (aaaa-mm-dd) — formatar sem new Date()
@@ -22,12 +32,46 @@ function formatarData(iso: string): string {
   return `${d}/${m}/${a}`
 }
 
+function dataParaInput(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
   const [expandido, setExpandido] = useState(false)
   const [loading, setLoading] = useState<'lida' | 'tarefa' | null>(null)
+  const [dialogPrazo, setDialogPrazo] = useState(false)
+  const [diasUteis, setDiasUteis] = useState('15')
+  const [vencimento, setVencimento] = useState('')
+  const [vencimentoEditado, setVencimentoEditado] = useState(false)
 
   const naoLida = i.status === 'nao_lida'
   const textoLongo = (i.texto?.length ?? 0) > 280
+
+  // Sugestão pela sistemática do CPC: publicada no 1º dia útil após a
+  // disponibilização; prazo começa no dia útil seguinte; só dias úteis contam
+  const sugestao = useMemo(() => {
+    const dias = parseInt(diasUteis, 10)
+    if (!Number.isFinite(dias) || dias < 1) return null
+    return vencimentoPrazoDJEN(i.data_disponibilizacao, dias)
+  }, [diasUteis, i.data_disponibilizacao])
+
+  function abrirDialogPrazo() {
+    setDiasUteis('15')
+    setVencimento(dataParaInput(vencimentoPrazoDJEN(i.data_disponibilizacao, 15)))
+    setVencimentoEditado(false)
+    setDialogPrazo(true)
+  }
+
+  function mudarDias(v: string) {
+    setDiasUteis(v)
+    if (!vencimentoEditado) {
+      const dias = parseInt(v, 10)
+      if (Number.isFinite(dias) && dias >= 1) {
+        setVencimento(dataParaInput(vencimentoPrazoDJEN(i.data_disponibilizacao, dias)))
+      }
+    }
+  }
 
   async function marcarLida() {
     setLoading('lida')
@@ -36,13 +80,20 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
     setLoading(null)
   }
 
-  async function criarTarefa() {
+  async function criarTarefa(comPrazo: boolean) {
     setLoading('tarefa')
-    const res = await criarTarefaDeIntimacao(i.id)
+    // Prazo processual vence no fim do expediente — grava 23:59 do dia (hora local)
+    const prazoISO = comPrazo && vencimento
+      ? new Date(`${vencimento}T23:59:00`).toISOString()
+      : null
+    const res = await criarTarefaDeIntimacao(i.id, prazoISO)
     if (res.error) {
       toast.error(res.error)
     } else {
-      toast.success('Tarefa criada no seu kanban. Defina o prazo ao revisá-la.')
+      setDialogPrazo(false)
+      toast.success(prazoISO
+        ? 'Tarefa criada no seu kanban com o prazo definido.'
+        : 'Tarefa criada no seu kanban, sem prazo.')
     }
     setLoading(null)
   }
@@ -136,12 +187,12 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
         )}
         {i.status !== 'tratada' && (
           <button
-            onClick={criarTarefa}
+            onClick={abrirDialogPrazo}
             disabled={loading !== null}
             className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
           >
             <ListTodo className="h-3.5 w-3.5" />
-            {loading === 'tarefa' ? 'Criando...' : 'Criar tarefa'}
+            Criar tarefa
           </button>
         )}
         {i.link && (
@@ -156,6 +207,68 @@ export function IntimacaoCard({ intimacao: i }: { intimacao: Intimacao }) {
           </a>
         )}
       </div>
+
+      {/* Diálogo: prazo sugerido em dias úteis, confirmado pelo advogado */}
+      <Dialog open={dialogPrazo} onOpenChange={setDialogPrazo}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Criar tarefa com prazo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Disponibilizada no DJEN em <strong>{formatarData(i.data_disponibilizacao)}</strong>.
+              A sugestão segue o CPC: publicação no 1º dia útil seguinte, início no dia útil
+              posterior, contando só dias úteis (feriados nacionais).
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor={`dias-${i.id}`}>Prazo (dias úteis)</Label>
+                <Input
+                  id={`dias-${i.id}`}
+                  inputMode="numeric"
+                  value={diasUteis}
+                  onChange={(e) => mudarDias(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`venc-${i.id}`}>Vencimento</Label>
+                <Input
+                  id={`venc-${i.id}`}
+                  type="date"
+                  value={vencimento}
+                  onChange={(e) => { setVencimento(e.target.value); setVencimentoEditado(true) }}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {vencimentoEditado
+                ? 'Data ajustada manualmente.'
+                : sugestao
+                  ? `Sugestão calculada: ${sugestao.toLocaleDateString('pt-BR')}. `
+                  : ''}
+              A contagem não considera feriados estaduais/municipais nem recesso forense —
+              confirme a data antes de salvar.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading !== null}
+                onClick={() => criarTarefa(false)}
+              >
+                Criar sem prazo
+              </Button>
+              <Button
+                type="button"
+                disabled={loading !== null || !vencimento}
+                onClick={() => criarTarefa(true)}
+              >
+                {loading === 'tarefa' ? 'Criando...' : 'Criar com este prazo'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
