@@ -53,3 +53,27 @@ Quando um processo não for encontrado:
 - Rotas `/api/cron/*` exigem `Authorization: Bearer <CRON_SECRET>`.
 - Falha de consulta ou e-mail não deve apagar o último dado válido nem bloquear o registro
   manual pela equipe.
+
+## Crons na Vercel
+
+O `vercel.json` do repositório usa **agendamentos diários** compatíveis com o plano **Hobby**
+(gratuito). Nesse plano, expressões que rodam mais de uma vez por dia (ex.: `0 * * * *` ou
+`30 * * * *`) **impedem o deploy** com o erro *Hobby accounts are limited to daily cron jobs*.
+
+| Rota | Hobby (atual) | Pro (`vercel.cron-pro.example.json`) |
+|------|---------------|--------------------------------------|
+| `/api/cron/datajud` | 1×/dia útil (~8h BRT) | A cada hora em dias úteis |
+| `/api/cron/djen` | 1×/dia útil (~7h BRT) | Igual |
+| `/api/cron/importacao` | 1×/dia (~9h BRT) | A cada hora |
+| `/api/cron/prazos` | 1×/dia útil (~10h BRT) | Igual |
+
+Horários em **UTC** (Vercel Cron). No Hobby a execução pode variar em até ~59 min.
+
+Para frequência maior no plano gratuito, dispare as mesmas rotas por serviço externo
+(cron-job.org, GitHub Actions, etc.) com `GET` e header `Authorization: Bearer <CRON_SECRET>`.
+No plano Pro, substitua o bloco `crons` do `vercel.json` pelo conteúdo de
+`vercel.cron-pro.example.json`.
+
+**Limite de duração:** rotas cron usam `maxDuration = 300` (5 min). No Hobby o teto de função
+é menor (~10–60 s); jobs longos podem estourar timeout — use o botão manual correspondente
+ou upgrade para Pro se a varredura completa for crítica.
