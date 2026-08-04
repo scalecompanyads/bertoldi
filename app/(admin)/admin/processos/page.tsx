@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { Search, Info } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ProcessoCard } from '@/components/shared/processo-card'
@@ -43,7 +43,17 @@ export default async function ProcessosPage({ searchParams }: Props) {
         : somenteDigitos
       query = query.or(`numero_cnj.ilike.%${formatado}%,numero_cnj.ilike.%${somenteDigitos}%`)
     } else {
-      query = query.or(`tipo_servico.ilike.%${q}%,tribunal.ilike.%${q}%,numero_cnj.ilike.%${q}%`)
+      const termo = q.trim()
+      query = query.or(
+        [
+          `tipo_servico.ilike.%${termo}%`,
+          `tribunal.ilike.%${termo}%`,
+          `numero_cnj.ilike.%${termo}%`,
+          `parte_autora.ilike.%${termo}%`,
+          `parte_re.ilike.%${termo}%`,
+          `outras_partes.ilike.%${termo}%`,
+        ].join(',')
+      )
     }
   }
 
@@ -87,6 +97,17 @@ export default async function ProcessosPage({ searchParams }: Props) {
         <span className="text-sm text-muted-foreground">{total ?? 0} no total</span>
       </div>
 
+      <p className="flex gap-2.5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-foreground/70" aria-hidden="true" />
+        <span>
+          Para adicionar novos processos, vá para a aba de{' '}
+          <Link href="/admin/clientes" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+            Clientes
+          </Link>
+          {' '}e crie um novo cliente ou selecione um cliente existente e adicione o processo.
+        </span>
+      </p>
+
       {/* Busca + filtros */}
       <div className="flex flex-col sm:flex-row gap-3">
         <form className="relative flex-1 max-w-sm" action="/admin/processos">
@@ -94,7 +115,7 @@ export default async function ProcessosPage({ searchParams }: Props) {
           <Input
             name="q"
             defaultValue={q}
-            placeholder="Nº do processo, matéria ou tribunal..."
+            placeholder="Nº do processo, partes, matéria ou tribunal..."
             className="pl-9"
           />
           {status && <input type="hidden" name="status" value={status} />}
