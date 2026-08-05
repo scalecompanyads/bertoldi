@@ -4,9 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { assertEquipe } from '@/lib/actions/assert-equipe'
 import { isValidCpf, normalizeCpfDigits } from '@/lib/cpf'
 import { buscarClientePorCpf } from '@/lib/cliente-cpf'
-import { getAuthCallbackUrl } from '@/lib/site-url'
+import { buildAuthTokenLink, getAuthCallbackUrl } from '@/lib/site-url'
 import { sincronizarEmailUsuario } from '@/lib/actions/sync-auth-email'
-import { botaoHtml, enviarEmail, escapeHtml, layoutEmail } from '@/lib/email'
+import { botaoHtml, enviarEmail, escapeHtml, layoutEmail, mensagemErroResend, remetenteProntoParaClientes } from '@/lib/email'
 import { revalidatePath } from 'next/cache'
 
 export type ConviteResult =
@@ -79,9 +79,34 @@ async function enviarLinkAcessoCliente(params: {
 
   return enviarEmail({
     para: params.para,
-    assunto: `${titulo} — Bertoldi Advocacia`,
+    assunto: `${titulo} - Bertoldi Advocacia`,
     html,
+    idempotencyKey: `cliente-acesso/${params.para}/${params.actionLink.slice(-24)}`,
   })
+}
+
+function tipoVerificacaoLink(
+  conviteNovo: boolean,
+  verificationType?: string | null
+): 'recovery' | 'invite' | 'signup' {
+  if (verificationType === 'invite' || verificationType === 'recovery' || verificationType === 'signup') {
+    return verificationType
+  }
+  return conviteNovo ? 'invite' : 'recovery'
+}
+
+function resolverLinkAcesso(
+  linkData: { properties?: { action_link?: string; hashed_token?: string; verification_type?: string } | null },
+  conviteNovo: boolean
+): string | null {
+  const hashedToken = linkData.properties?.hashed_token
+  if (hashedToken) {
+    return buildAuthTokenLink(
+      hashedToken,
+      tipoVerificacaoLink(conviteNovo, linkData.properties?.verification_type)
+    )
+  }
+  return linkData.properties?.action_link ?? null
 }
 
 /** Cria/vincula conta Auth e gera link para o cliente definir senha. */
@@ -181,8 +206,8 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
     return { error: `Conta criada, mas falha ao vincular: ${linkErrorDb.message}` }
   }
 
-  const actionLink = linkData.properties?.action_link
-  if (!actionLink) {
+  const linkAcesso = resolverLinkAcesso(linkData, conviteNovo)
+  if (!linkAcesso) {
     return {
       ok: true,
       emailEnviado: false,
@@ -190,10 +215,20 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
     }
   }
 
+  if (!remetenteProntoParaClientes()) {
+    return {
+      ok: true,
+      emailEnviado: false,
+      linkConvite: linkAcesso,
+      message:
+        'Link gerado. Para enviar automaticamente a clientes, defina EMAIL_FROM na Vercel com um e-mail do domínio verificado no Resend (ex: avisos@advbertoldi.com.br).',
+    }
+  }
+
   const envio = await enviarLinkAcessoCliente({
     para: emailParaLink,
     nome: cliente.nome,
-    actionLink,
+    actionLink: linkAcesso,
     conviteNovo,
   })
 
@@ -212,9 +247,9 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
   return {
     ok: true,
     emailEnviado: false,
-    linkConvite: actionLink,
+    linkConvite: linkAcesso,
     message: envio.pulado
-      ? 'Link gerado. Configure RESEND_API_KEY para envio automático — copie e envie ao cliente.'
-      : 'Link gerado. Não foi possível enviar o e-mail automaticamente — copie e envie ao cliente.',
+      ? 'Link gerado. Configure RESEND_API_KEY na Vercel — copie e envie ao cliente.'
+      : `Link gerado. ${mensagemErroResend(envio.erro)} Copie e envie ao cliente.`,
   }
 }

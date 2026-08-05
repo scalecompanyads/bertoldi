@@ -12,3 +12,17 @@ export function getSiteUrl(): string {
 export function getAuthCallbackUrl(next: string): string {
   return `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(next)}`
 }
+
+/** Link de convite/recuperação no domínio do app (evita URL longa do Supabase no e-mail). */
+export function buildAuthTokenLink(
+  tokenHash: string,
+  type: 'recovery' | 'invite' | 'signup',
+  next = '/auth/definir-senha'
+): string {
+  const params = new URLSearchParams({
+    token_hash: tokenHash,
+    type,
+    next,
+  })
+  return `${getSiteUrl()}/auth/callback?${params.toString()}`
+}

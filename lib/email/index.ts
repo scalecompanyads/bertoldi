@@ -12,6 +12,20 @@ function remetente(): string {
   return process.env.EMAIL_FROM || 'Bertoldi Advocacia <onboarding@resend.dev>'
 }
 
+/** Remetente próprio (domínio verificado) — necessário para e-mails a clientes. */
+export function remetenteProntoParaClientes(): boolean {
+  const from = process.env.EMAIL_FROM?.trim()
+  return !!from && !from.includes('onboarding@resend.dev')
+}
+
+export function mensagemErroResend(erro: string | undefined): string {
+  if (!erro) return 'Não foi possível enviar o e-mail.'
+  if (/only send testing emails/i.test(erro)) {
+    return 'Configure EMAIL_FROM na Vercel com um e-mail do domínio verificado no Resend (ex: avisos@advbertoldi.com.br). Enquanto usar onboarding@resend.dev, só é possível enviar para o e-mail da conta Resend.'
+  }
+  return erro
+}
+
 export interface EnvioResult {
   ok: boolean
   pulado?: boolean
@@ -45,8 +59,15 @@ export async function enviarEmail(params: {
 
     if (!res.ok) {
       const body = await res.text().catch(() => '')
+      let erro = `Resend retornou ${res.status}`
+      try {
+        const json = JSON.parse(body) as { message?: string }
+        if (json.message) erro = json.message
+      } catch {
+        if (body) erro = body.slice(0, 200)
+      }
       console.error(`[email] Resend retornou ${res.status}: ${body.slice(0, 300)}`)
-      return { ok: false, erro: `Resend retornou ${res.status}` }
+      return { ok: false, erro }
     }
 
     return { ok: true }
@@ -106,10 +127,18 @@ export function itemListaHtml(linha1: string, linha2?: string): string {
   </div>`
 }
 
+export function escapeHtmlAttr(texto: string): string {
+  return texto
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
 export function botaoHtml(texto: string, url: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:16px 0 4px;">
     <tr><td style="background-color:#18181b;border-radius:6px;">
-      <a href="${url}" style="display:inline-block;padding:10px 20px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">${escapeHtml(texto)}</a>
+      <a href="${escapeHtmlAttr(url)}" style="display:inline-block;padding:10px 20px;color:#ffffff;font-size:14px;font-weight:bold;text-decoration:none;">${escapeHtml(texto)}</a>
     </td></tr>
   </table>`
 }
