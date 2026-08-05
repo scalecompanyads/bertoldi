@@ -34,7 +34,7 @@ export default async function EquipePage() {
   const admin = createAdminClient()
   const { data: membros } = await admin
     .from('usuarios')
-    .select('id, nome, email, papel, oab_numero, oab_uf, criado_em')
+    .select('id, nome, email, papel, oab_numero, oab_uf, criado_em, foto_path')
     .neq('papel', 'cliente')
     .order('nome')
 

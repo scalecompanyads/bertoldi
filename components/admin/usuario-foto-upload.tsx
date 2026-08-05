@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Camera, Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -30,6 +30,11 @@ export function UsuarioFotoUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
+  const [fotoAtual, setFotoAtual] = useState(fotoPath ?? null)
+
+  useEffect(() => {
+    setFotoAtual(fotoPath ?? null)
+  }, [fotoPath])
 
   async function enviar(file: File) {
     setLoading(true)
@@ -41,6 +46,7 @@ export function UsuarioFotoUpload({
     } else {
       toast.success('Foto atualizada.')
       setPreview(null)
+      if (res.fotoPath) setFotoAtual(res.fotoPath)
       router.refresh()
     }
     setLoading(false)
@@ -62,6 +68,7 @@ export function UsuarioFotoUpload({
     else {
       toast.success('Foto removida.')
       setPreview(null)
+      setFotoAtual(null)
       router.refresh()
     }
     setLoading(false)
@@ -79,7 +86,7 @@ export function UsuarioFotoUpload({
           <img src={preview} alt="" className="size-full object-cover" />
         </div>
       ) : (
-        <UsuarioAvatar nome={nome} fotoPath={fotoPath} size={size} />
+        <UsuarioAvatar nome={nome} fotoPath={fotoAtual} size={size} />
       )}
       {loading && (
         <span className="absolute inset-0 flex items-center justify-center rounded-full bg-background/70">
@@ -124,9 +131,9 @@ export function UsuarioFotoUpload({
               onClick={() => inputRef.current?.click()}
             >
               <Camera className="h-3.5 w-3.5 mr-1" />
-              {fotoPath || preview ? 'Trocar foto' : 'Adicionar foto'}
+              {fotoAtual || preview ? 'Trocar foto' : 'Adicionar foto'}
             </Button>
-            {podeRemover && (fotoPath || preview) && (
+            {podeRemover && (fotoAtual || preview) && (
               <Button type="button" size="sm" variant="ghost" disabled={loading} onClick={remover}>
                 <Trash2 className="h-3.5 w-3.5 mr-1" />
                 Remover

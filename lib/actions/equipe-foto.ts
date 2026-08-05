@@ -9,16 +9,13 @@ const MAX_BYTES = 2 * 1024 * 1024
 
 type PermOk = {
   ok: true
-  supabase: Awaited<ReturnType<typeof createClient>>
   userId: string
-  fotoPath?: string | null
+  fotoPath: string | null
 }
 
-async function getFotoPath(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string
-): Promise<string | null> {
-  const { data, error } = await supabase
+async function getFotoPath(userId: string): Promise<string | null> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
     .from('usuarios')
     .select('foto_path')
     .eq('id', userId)
@@ -56,8 +53,8 @@ async function assertPodeAlterarFoto(targetUserId: string): Promise<PermOk | { e
       .eq('id', user.id)
       .single()
     if (error || !eu || eu.papel === 'cliente') return { error: 'Sem permissão' }
-    const fotoPath = await getFotoPath(supabase, user.id)
-    return { ok: true, supabase, userId: user.id, fotoPath }
+    const fotoPath = await getFotoPath(user.id)
+    return { ok: true, userId: user.id, fotoPath }
   }
 
   const { data: eu } = await supabase
@@ -77,8 +74,19 @@ async function assertPodeAlterarFoto(targetUserId: string): Promise<PermOk | { e
 
   if (!alvo || alvo.papel === 'cliente') return { error: 'Usuário não encontrado' }
 
-  const fotoPath = await getFotoPath(admin, targetUserId)
-  return { ok: true, supabase, userId: user.id, fotoPath }
+  const fotoPath = await getFotoPath(targetUserId)
+  return { ok: true, userId: user.id, fotoPath }
+}
+
+function normalizarTipo(arquivo: File): string | null {
+  if (TIPOS_PERMITIDOS.has(arquivo.type)) return arquivo.type
+  if (arquivo.type === 'image/jpg') return 'image/jpeg'
+
+  const ext = arquivo.name.split('.').pop()?.toLowerCase()
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+  if (ext === 'png') return 'image/png'
+  if (ext === 'webp') return 'image/webp'
+  return null
 }
 
 function extensaoPorTipo(tipo: string): string {
@@ -93,26 +101,35 @@ export async function uploadFotoUsuario(targetUserId: string, formData: FormData
 
   const arquivo = formData.get('foto') as File | null
   if (!arquivo || arquivo.size === 0) return { error: 'Selecione uma imagem.' }
-  if (!TIPOS_PERMITIDOS.has(arquivo.type)) {
+
+  const contentType = normalizarTipo(arquivo)
+  if (!contentType) {
     return { error: 'Use JPG, PNG ou WebP (máx. 2 MB).' }
   }
   if (arquivo.size > MAX_BYTES) return { error: 'A imagem deve ter no máximo 2 MB.' }
 
-  const path = `${targetUserId}/avatar.${extensaoPorTipo(arquivo.type)}`
+  const admin = createAdminClient()
+  const path = `${targetUserId}/${Date.now()}.${extensaoPorTipo(contentType)}`
 
-  const { error: uploadError } = await perm.supabase.storage
+  if (perm.fotoPath) {
+    await admin.storage.from('avatars').remove([perm.fotoPath])
+  }
+
+  const { error: uploadError } = await admin.storage
     .from('avatars')
-    .upload(path, arquivo, { upsert: true, contentType: arquivo.type })
+    .upload(path, arquivo, { upsert: false, contentType })
 
   if (uploadError) return { error: erroStorageFoto(uploadError.message) }
 
-  const db = perm.userId === targetUserId ? perm.supabase : createAdminClient()
-  const { error: dbError } = await db
+  const { error: dbError } = await admin
     .from('usuarios')
     .update({ foto_path: path })
     .eq('id', targetUserId)
 
-  if (dbError) return { error: erroDbFoto(dbError.message) }
+  if (dbError) {
+    await admin.storage.from('avatars').remove([path])
+    return { error: erroDbFoto(dbError.message) }
+  }
 
   revalidatePath('/admin/equipe')
   revalidatePath('/admin', 'layout')
@@ -124,10 +141,10 @@ export async function removerFotoUsuario(targetUserId: string) {
   if ('error' in perm) return { error: perm.error }
   if (!perm.fotoPath) return { ok: true }
 
-  await perm.supabase.storage.from('avatars').remove([perm.fotoPath])
+  const admin = createAdminClient()
+  await admin.storage.from('avatars').remove([perm.fotoPath])
 
-  const db = perm.userId === targetUserId ? perm.supabase : createAdminClient()
-  const { error } = await db.from('usuarios').update({ foto_path: null }).eq('id', targetUserId)
+  const { error } = await admin.from('usuarios').update({ foto_path: null }).eq('id', targetUserId)
   if (error) return { error: erroDbFoto(error.message) }
 
   revalidatePath('/admin/equipe')

@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const { data: usuario, error: usuarioError } = await supabase
     .from('usuarios')
-    .select('papel, nome')
+    .select('papel, nome, foto_path')
     .eq('id', user.id)
     .single()
 
@@ -41,6 +41,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminHeaderUser
             userId={user.id}
             nome={usuario.nome}
+            fotoPath={usuario.foto_path}
           />
         </header>
         <main id="conteudo-principal" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
