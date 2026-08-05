@@ -93,18 +93,18 @@ export default async function ProcessosPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">Processos</h1>
-        <span className="text-sm text-muted-foreground">{total ?? 0} no total</span>
+        <h1 className="text-2xl font-semibold tracking-tight">Processos</h1>
+        <span className="text-sm text-muted-foreground tabular-nums">{total ?? 0} no total</span>
       </div>
 
-      <p className="flex gap-2.5 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-foreground/70" aria-hidden="true" />
+      <p className="flex gap-3 rounded-xl border bg-card px-4 py-3 text-sm text-muted-foreground">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
         <span>
-          Para adicionar novos processos, vá para a aba de{' '}
-          <Link href="/admin/clientes" className="font-medium text-foreground underline underline-offset-2 hover:text-primary">
+          Para adicionar novos processos, acesse{' '}
+          <Link href="/admin/clientes" className="font-medium text-foreground underline underline-offset-2 hover:text-primary transition-colors">
             Clientes
           </Link>
-          {' '}e crie um novo cliente ou selecione um cliente existente e adicione o processo.
+          {' '}e adicione o processo ao cliente.
         </span>
       </p>
 
@@ -161,7 +161,7 @@ export default async function ProcessosPage({ searchParams }: Props) {
 
       {!queryError && (
         lista.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start">
             {lista.map((p) => (
               <ProcessoCard
                 key={p.id}

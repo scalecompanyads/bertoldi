@@ -11,6 +11,7 @@ export interface Usuario {
   papel: PapelUsuario
   oab_numero: string | null
   oab_uf: string | null
+  foto_path: string | null
   criado_em: string
 }
 

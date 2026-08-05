@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { criarAudiencia, atualizarAudiencia, excluirAudiencia } from '@/lib/actions/audiencias'
 import { TIPO_AUDIENCIA_LABEL, type Audiencia, type TipoAudiencia } from '@/lib/types'
@@ -42,6 +43,18 @@ export function AudienciaForm({ processos, audiencia, compacto }: {
   const [salvando, setSalvando] = useState(false)
   const [tipo, setTipo] = useState<TipoAudiencia>(audiencia?.tipo ?? 'conciliacao')
   const [processoSel, setProcessoSel] = useState(audiencia?.processo_id ?? '')
+
+  const opcoesProcesso = useMemo(
+    () => [
+      { value: '', label: 'Nenhum' },
+      ...processos.map((p) => ({
+        value: p.id,
+        label: `${p.clientes?.nome ? `${p.clientes.nome} — ` : ''}${p.numero_cnj ?? p.tipo_servico}`,
+        keywords: [p.clientes?.nome, p.numero_cnj, p.tipo_servico].filter(Boolean).join(' '),
+      })),
+    ],
+    [processos]
+  )
 
   async function salvar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -97,7 +110,7 @@ export function AudienciaForm({ processos, audiencia, compacto }: {
             <DialogTitle>{audiencia ? 'Editar audiência' : 'Agendar audiência'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={salvar} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label htmlFor="data_hora">Data e hora *</Label>
                 <Input
@@ -123,16 +136,14 @@ export function AudienciaForm({ processos, audiencia, compacto }: {
 
             <div className="space-y-1.5">
               <Label>Processo</Label>
-              <Select value={processoSel} onValueChange={(v) => setProcessoSel(v ?? '')}>
-                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                <SelectContent>
-                  {processos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.clientes?.nome ? `${p.clientes.nome} — ` : ''}{p.numero_cnj ?? p.tipo_servico}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={processoSel}
+                onValueChange={setProcessoSel}
+                options={opcoesProcesso}
+                placeholder="Nenhum"
+                searchPlaceholder="Buscar por cliente, CNJ ou matéria..."
+                emptyMessage="Nenhum processo encontrado."
+              />
             </div>
 
             <div className="space-y-1.5">

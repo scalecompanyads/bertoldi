@@ -23,7 +23,11 @@ export function BertoldiLogo({ size = 'md', href, className, priority }: Props) 
       width={480}
       height={120}
       priority={priority}
-      className={cn('w-auto object-contain', SIZES[size], className)}
+      className={cn(
+        'w-auto object-contain brightness-0 dark:brightness-100',
+        SIZES[size],
+        className
+      )}
     />
   )
 

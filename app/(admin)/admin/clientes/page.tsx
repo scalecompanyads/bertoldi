@@ -59,7 +59,7 @@ export default async function ClientesPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">
+        <h1 className="text-2xl font-semibold tracking-tight">
           {mostrarArquivados ? 'Clientes arquivados' : 'Clientes'}
         </h1>
         {!mostrarArquivados && (
@@ -138,27 +138,27 @@ export default async function ClientesPage({ searchParams }: Props) {
 
       {!queryError && (
         clientes && clientes.length > 0 ? (
-        <div className="rounded-lg border divide-y">
+        <div className="rounded-2xl border bg-card divide-y divide-border/60 overflow-hidden shadow-sm">
           {clientes.map((c) => (
             <Link
               key={c.id}
               href={`/admin/clientes/${c.id}`}
-              className="flex items-center justify-between px-4 py-3 hover:bg-accent transition-colors"
+              className="flex items-center justify-between px-5 py-3.5 hover:bg-accent transition-colors"
             >
               <div>
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-sm">{c.nome}</p>
                   {c.arquivado && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 rounded-full">
                       Arquivado
                     </Badge>
                   )}
                 </div>
                 {c.cpf_cnpj && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{c.cpf_cnpj}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5 font-mono">{c.cpf_cnpj}</p>
                 )}
               </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
                 {c.email && <span className="hidden sm:block">{c.email}</span>}
                 {c.telefone && <span>{c.telefone}</span>}
               </div>
@@ -166,7 +166,7 @@ export default async function ClientesPage({ searchParams }: Props) {
           ))}
         </div>
         ) : (
-        <div className="rounded-lg border py-12 text-center">
+        <div className="rounded-2xl border bg-card py-16 text-center">
           <p className="text-sm text-muted-foreground">
             {q || status
               ? 'Nenhum cliente encontrado com esses filtros.'

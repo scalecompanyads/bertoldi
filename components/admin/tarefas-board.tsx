@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { SearchableSelect } from '@/components/shared/searchable-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { criarTarefa, atualizarTarefa, moverTarefa, excluirTarefa } from '@/lib/actions/tarefas'
 import { diasUteisRestantes } from '@/lib/prazos'
@@ -91,6 +92,18 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
   const [salvando, setSalvando] = useState(false)
   const [arrastando, setArrastando] = useState<string | null>(null)
   const [colunaAlvo, setColunaAlvo] = useState<StatusTarefa | null>(null)
+
+  const opcoesProcesso = useMemo(
+    () => [
+      { value: '', label: 'Nenhum' },
+      ...processos.map((p) => ({
+        value: p.id,
+        label: `${p.clientes?.nome ? `${p.clientes.nome} — ` : ''}${p.numero_cnj ?? p.tipo_servico}`,
+        keywords: [p.clientes?.nome, p.numero_cnj, p.tipo_servico].filter(Boolean).join(' '),
+      })),
+    ],
+    [processos]
+  )
 
   function abrirNova(status: StatusTarefa) {
     setEditando(null)
@@ -215,7 +228,7 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
                         <p className={`text-sm font-medium leading-snug ${t.status === 'concluido' ? 'line-through text-muted-foreground' : ''}`}>
                           {t.titulo}
                         </p>
-                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
+                        <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                           {colunaAnterior && (
                             <button
                               type="button"
@@ -321,16 +334,14 @@ export function TarefasBoard({ tarefas, processos }: { tarefas: Tarefa[]; proces
             </div>
             <div className="space-y-1.5">
               <Label>Processo vinculado</Label>
-              <Select value={processoSel} onValueChange={(v) => setProcessoSel(v ?? '')}>
-                <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
-                <SelectContent>
-                  {processos.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.clientes?.nome ? `${p.clientes.nome} — ` : ''}{p.numero_cnj ?? p.tipo_servico}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={processoSel}
+                onValueChange={setProcessoSel}
+                options={opcoesProcesso}
+                placeholder="Nenhum"
+                searchPlaceholder="Buscar por cliente, CNJ ou matéria..."
+                emptyMessage="Nenhum processo encontrado."
+              />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="outline" onClick={() => setDialogAberto(false)}>Cancelar</Button>

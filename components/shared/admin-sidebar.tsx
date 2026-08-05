@@ -23,7 +23,7 @@ const NAV = [
   { href: '/admin/auditoria', label: 'Auditoria', icon: History, exact: false },
 ]
 
-export function AdminSidebar() {
+export function AdminSidebar({ badges = {} }: { badges?: Record<string, boolean> }) {
   const pathname = usePathname()
   const router = useRouter()
   const [busca, setBusca] = useState('')
@@ -48,7 +48,7 @@ export function AdminSidebar() {
   }
 
   return (
-    <aside className="flex h-full w-52 shrink-0 flex-col border-r bg-card">
+    <aside className="flex h-full w-52 shrink-0 flex-col border-r bg-sidebar">
       {/* Logo */}
       <div className="flex h-14 items-center border-b px-4">
         <BertoldiLogo href="/admin" size="sm" />
@@ -73,19 +73,31 @@ export function AdminSidebar() {
       <nav aria-label="Navegação administrativa" className="flex flex-col gap-0.5 p-2 flex-1">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
+          const notificar = badges[href]
           return (
             <Link
               key={href}
               href={href}
               aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                'flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
                 active
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <span className="relative shrink-0">
+                <Icon className="h-4 w-4" />
+                {notificar && (
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'absolute -right-1 -top-1 size-2 rounded-full bg-red-500',
+                      active ? 'ring-2 ring-primary' : 'ring-2 ring-card'
+                    )}
+                  />
+                )}
+              </span>
               {label}
             </Link>
           )

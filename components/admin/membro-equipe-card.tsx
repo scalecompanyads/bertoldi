@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { atualizarMembro, removerMembro } from '@/lib/actions/equipe'
+import { UsuarioAvatar } from '@/components/shared/usuario-avatar'
+import { UsuarioFotoUpload } from '@/components/admin/usuario-foto-upload'
 import type { Usuario, PapelUsuario } from '@/lib/types'
 
 const PAPEL_LABEL: Record<Exclude<PapelUsuario, 'cliente'>, string> = {
@@ -59,6 +61,13 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
   if (editando) {
     return (
       <form onSubmit={salvar} className="rounded-lg border border-primary/40 p-4 space-y-3">
+        <UsuarioFotoUpload
+          userId={membro.id}
+          nome={membro.nome}
+          fotoPath={membro.foto_path}
+          variant="completo"
+          size="lg"
+        />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor={`nome-${membro.id}`}>Nome</Label>
@@ -79,7 +88,7 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
             </Select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label htmlFor={`oab-${membro.id}`}>OAB (nº)</Label>
             <Input
@@ -120,7 +129,9 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
 
   return (
     <div className="rounded-lg border p-4 flex items-start justify-between gap-3">
-      <div className="space-y-1 min-w-0">
+      <div className="flex items-start gap-3 min-w-0 flex-1">
+        <UsuarioAvatar nome={membro.nome} fotoPath={membro.foto_path} size="lg" className="mt-0.5" />
+        <div className="space-y-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="text-base font-semibold leading-snug">{nomeExibicao(membro)}</p>
           <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
@@ -141,6 +152,7 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
         ) : membro.papel !== 'secretaria' ? (
           <p className="text-xs text-amber-600 dark:text-amber-400">Sem OAB — intimações não monitoradas</p>
         ) : null}
+        </div>
       </div>
 
       <div className="flex items-center gap-1 shrink-0">

@@ -32,6 +32,15 @@ export default async function LoginPage({
             Environment Variables e faça redeploy.
           </div>
         )}
+        {erro === 'perfil' && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            Sua conta existe no login, mas não há perfil vinculado na equipe. Peça a um administrador
+            para convidar seu e-mail ou confira se as migrations do Supabase foram aplicadas.
+          </div>
+        )}
         <div className="rounded-xl border bg-card p-6 shadow-sm space-y-4">
           <LoginForm />
         </div>

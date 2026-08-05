@@ -12,7 +12,7 @@ export default async function ComunicadosPage() {
       .from('comunicados')
       .select('*, cliente:cliente_id(id, nome), destinatarios:comunicado_destinatarios(cliente_id, lido_em, email_enviado_em)')
       .order('enviado_em', { ascending: false }),
-    supabase.from('clientes').select('id, nome').eq('arquivado', false).order('nome'),
+    supabase.from('clientes').select('id, nome, cpf_cnpj').eq('arquivado', false).order('nome'),
   ])
 
   const lista = (comunicados ?? []) as (

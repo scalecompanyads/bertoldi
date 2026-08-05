@@ -6,11 +6,11 @@ import { diasUteisRestantes } from '@/lib/prazos'
 import type { Cliente, Processo } from '@/lib/types'
 
 const STATUS_COR: Record<string, string> = {
-  triagem: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  em_analise: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  distribuido: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
-  em_andamento: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
-  concluido: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+  triagem:      'bg-slate-400/10 text-slate-500 dark:bg-slate-300/10 dark:text-slate-300',
+  em_analise:   'bg-amber-400/10 text-amber-700 dark:bg-amber-300/10 dark:text-amber-300',
+  distribuido:  'bg-violet-400/10 text-violet-700 dark:bg-violet-300/10 dark:text-violet-300',
+  em_andamento: 'bg-sky-400/10 text-sky-700 dark:bg-sky-300/10 dark:text-sky-300',
+  concluido:    'bg-emerald-400/10 text-emerald-700 dark:bg-emerald-300/10 dark:text-emerald-300',
 }
 
 type ProcessoRef = Pick<Processo, 'id' | 'tipo_servico' | 'cliente_id' | 'status_interno'> & {
@@ -125,27 +125,27 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Visão do dia</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Visão do dia</h1>
 
       {/* O que exige atenção hoje, em ordem de urgência */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-start">
         {/* Intimações não lidas */}
-        <Link href="/admin/intimacoes" className="rounded-xl border p-4 hover:bg-accent transition-colors space-y-2 block">
+        <Link href="/admin/intimacoes" className="rounded-2xl border bg-card p-4 hover:bg-accent shadow-sm hover:shadow-md transition-all duration-150 space-y-3 block">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Inbox className={`h-4 w-4 ${(totalIntimacoesNaoLidas ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`} />
+              <Inbox className={`h-4 w-4 ${(totalIntimacoesNaoLidas ?? 0) > 0 ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'}`} />
               <h2 className="text-sm font-semibold">Intimações não lidas</h2>
             </div>
-            <span className={`text-lg font-bold ${(totalIntimacoesNaoLidas ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
+            <span className={`text-2xl font-semibold tabular-nums ${(totalIntimacoesNaoLidas ?? 0) > 0 ? 'text-red-500 dark:text-red-400' : 'text-muted-foreground'}`}>
               {totalIntimacoesNaoLidas ?? 0}
             </span>
           </div>
           {intimacoes.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nenhuma pendente — tudo tratado.</p>
           ) : (
-            <ul className="space-y-1.5">
+            <ul className="space-y-1">
               {intimacoes.map(i => (
-                <li key={i.id} className="text-xs text-muted-foreground truncate">
+                <li key={i.id} className="rounded-lg bg-secondary/60 px-3 py-2 text-xs text-muted-foreground truncate">
                   <span className="font-medium text-foreground">{i.sigla_tribunal}</span>
                   {' '}· {i.nome_classe ?? 'Comunicação'}
                   {i.numero_cnj && <span className="font-mono"> · {i.numero_cnj}</span>}
@@ -156,24 +156,26 @@ export default async function AdminPage() {
         </Link>
 
         {/* Prazos da semana (do usuário logado) */}
-        <Link href="/admin/tarefas" className="rounded-xl border p-4 hover:bg-accent transition-colors space-y-2 block">
+        <Link href="/admin/tarefas" className="rounded-2xl border bg-card p-4 hover:bg-accent shadow-sm hover:shadow-md transition-all duration-150 space-y-3 block">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <AlarmClock className={`h-4 w-4 ${prazos.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
+              <AlarmClock className={`h-4 w-4 ${prazos.length > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-muted-foreground'}`} />
               <h2 className="text-sm font-semibold">Meus prazos da semana</h2>
             </div>
-            <span className="text-lg font-bold">{prazos.length}</span>
+            <span className={`text-2xl font-semibold tabular-nums ${prazos.length > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-muted-foreground'}`}>
+              {prazos.length}
+            </span>
           </div>
           {prazos.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nenhum prazo nos próximos 7 dias.</p>
           ) : (
-            <ul className="space-y-1.5">
+            <ul className="space-y-1">
               {prazos.map(t => (
-                <li key={t.id} className="text-xs truncate">
-                  <span className={corPrazo(t.prazo)}>
+                <li key={t.id} className="rounded-lg bg-secondary/60 px-3 py-2 text-xs flex items-center gap-2 truncate">
+                  <span className={`shrink-0 font-semibold tabular-nums ${corPrazo(t.prazo)}`}>
                     {new Date(t.prazo).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
                   </span>
-                  <span className="text-muted-foreground"> · {t.titulo}</span>
+                  <span className="text-muted-foreground truncate">{t.titulo}</span>
                 </li>
               ))}
             </ul>
@@ -181,20 +183,22 @@ export default async function AdminPage() {
         </Link>
 
         {/* Movimentações desde ontem */}
-        <Link href="/admin/processos" className="rounded-xl border p-4 hover:bg-accent transition-colors space-y-2 block">
+        <Link href="/admin/processos" className="rounded-2xl border bg-card p-4 hover:bg-accent shadow-sm hover:shadow-md transition-all duration-150 space-y-3 block">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Activity className={`h-4 w-4 ${deOntem.length > 0 ? 'text-green-600 dark:text-green-400' : 'text-muted-foreground'}`} />
+              <Activity className={`h-4 w-4 ${deOntem.length > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted-foreground'}`} />
               <h2 className="text-sm font-semibold">Movimentações (24h)</h2>
             </div>
-            <span className="text-lg font-bold">{deOntem.length}</span>
+            <span className={`text-2xl font-semibold tabular-nums ${deOntem.length > 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+              {deOntem.length}
+            </span>
           </div>
           {deOntem.length === 0 ? (
             <p className="text-xs text-muted-foreground">Nada novo nos tribunais desde ontem.</p>
           ) : (
-            <ul className="space-y-1.5">
+            <ul className="space-y-1">
               {deOntem.map(m => (
-                <li key={m.id} className="text-xs text-muted-foreground truncate">
+                <li key={m.id} className="rounded-lg bg-secondary/60 px-3 py-2 text-xs text-muted-foreground truncate">
                   <span className="font-medium text-foreground">{m.processos?.clientes?.nome ?? 'Processo'}</span>
                   {m.ultimo_andamento && <> · {m.ultimo_andamento}</>}
                 </li>
@@ -206,37 +210,47 @@ export default async function AdminPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Link href="/admin/clientes" className="rounded-lg border p-4 hover:bg-accent transition-colors flex flex-col gap-2">
+        <Link href="/admin/clientes" className="rounded-2xl border bg-card p-5 hover:bg-accent shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <Users className="h-4 w-4 text-muted-foreground" />
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50" />
           </div>
-          <p className="text-2xl font-bold">{totalClientes ?? 0}</p>
-          <p className="text-xs text-muted-foreground">Clientes</p>
+          <div>
+            <p className="text-3xl font-semibold tracking-tight tabular-nums">{totalClientes ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Clientes</p>
+          </div>
         </Link>
 
-        <Link href="/admin/processos" className="rounded-lg border p-4 hover:bg-accent transition-colors flex flex-col gap-2">
+        <Link href="/admin/processos" className="rounded-2xl border bg-card p-5 hover:bg-accent shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <Briefcase className="h-4 w-4 text-muted-foreground" />
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50" />
           </div>
-          <p className="text-2xl font-bold">{totalAtivos ?? 0}</p>
-          <p className="text-xs text-muted-foreground">Processos ativos</p>
+          <div>
+            <p className="text-3xl font-semibold tracking-tight tabular-nums text-primary">{totalAtivos ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Processos ativos</p>
+          </div>
         </Link>
 
-        <div className="rounded-lg border p-4 flex flex-col gap-2">
-          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-          <p className="text-2xl font-bold">{totalConcluidos ?? 0}</p>
-          <p className="text-xs text-muted-foreground">Concluídos</p>
+        <div className="rounded-2xl border bg-card p-5 flex flex-col gap-3">
+          <CheckCircle2 className="h-4 w-4 text-emerald-500 dark:text-emerald-400" />
+          <div>
+            <p className="text-3xl font-semibold tracking-tight tabular-nums text-emerald-600 dark:text-emerald-400">{totalConcluidos ?? 0}</p>
+            <p className="text-xs text-muted-foreground mt-1">Concluídos</p>
+          </div>
         </div>
 
-        <Link href="/admin/comunicados" className="rounded-lg border p-4 hover:bg-accent transition-colors flex flex-col gap-2">
+        <Link href="/admin/comunicados" className="rounded-2xl border bg-card p-5 hover:bg-accent shadow-sm hover:shadow-md transition-all duration-150 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <Bell className={`h-4 w-4 ${(comunicadosNaoLidos ?? 0) > 0 ? 'text-amber-500 dark:text-amber-400' : 'text-muted-foreground'}`} />
+            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/50" />
           </div>
-          <p className="text-2xl font-bold">{comunicadosNaoLidos ?? 0}</p>
-          <p className="text-xs text-muted-foreground">Avisos não lidos</p>
+          <div>
+            <p className={`text-3xl font-semibold tracking-tight tabular-nums ${(comunicadosNaoLidos ?? 0) > 0 ? 'text-amber-500 dark:text-amber-400' : ''}`}>
+              {comunicadosNaoLidos ?? 0}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Avisos não lidos</p>
+          </div>
         </Link>
       </div>
 
@@ -244,19 +258,19 @@ export default async function AdminPage() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Novas movimentações</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Novas movimentações</h2>
         </div>
-        <div className="rounded-lg border divide-y">
+        <div className="rounded-2xl border bg-card divide-y divide-border/60 overflow-hidden">
           {movs.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">Nenhuma movimentação nova nos tribunais.</p>
+            <p className="px-5 py-4 text-sm text-muted-foreground">Nenhuma movimentação nova nos tribunais.</p>
           ) : (
             movs.map((m) => (
               <Link
                 key={m.id}
                 href={m.processos ? `/admin/clientes/${m.processos.cliente_id}/processos/${m.processo_id}` : '#'}
-                className="flex items-start gap-3 px-4 py-3 hover:bg-accent transition-colors"
+                className="flex items-start gap-3 px-5 py-3.5 hover:bg-accent transition-colors"
               >
-                <div className="mt-1.5 h-2 w-2 rounded-full bg-green-500 shrink-0" />
+                <div className="mt-2 h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">
                     {m.processos?.tipo_servico ?? 'Processo'}
@@ -266,7 +280,7 @@ export default async function AdminPage() {
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{m.ultimo_andamento}</p>
                   )}
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0 mt-0.5">{diasAtras(m.verificado_em)}</span>
+                <span className="text-xs text-muted-foreground/70 shrink-0 mt-0.5 tabular-nums">{diasAtras(m.verificado_em)}</span>
               </Link>
             ))
           )}
@@ -277,28 +291,28 @@ export default async function AdminPage() {
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Sem atualização há mais tempo</h2>
+          <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Sem atualização há mais tempo</h2>
         </div>
-        <div className="rounded-lg border divide-y">
+        <div className="rounded-2xl border bg-card divide-y divide-border/60 overflow-hidden">
           {paradosList.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum processo em andamento.</p>
+            <p className="px-5 py-4 text-sm text-muted-foreground">Nenhum processo em andamento.</p>
           ) : (
             paradosList.map((p) => (
               <Link
                 key={p.id}
                 href={`/admin/clientes/${p.cliente_id}/processos/${p.id}`}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-accent transition-colors"
+                className="flex items-center gap-3 px-5 py-3.5 hover:bg-accent transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{p.tipo_servico}</p>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">{p.clientes?.nome}</p>
                 </div>
-                <div className="shrink-0 flex flex-col items-end gap-1">
-                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${STATUS_COR[p.status_interno] ?? ''}`}>
+                <div className="shrink-0 flex flex-col items-end gap-1.5">
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${STATUS_COR[p.status_interno] ?? ''}`}>
                     {STATUS_PROCESSO_LABEL[p.status_interno as keyof typeof STATUS_PROCESSO_LABEL]}
                   </span>
-                  <span className="text-xs text-muted-foreground">
-                    atualizado {diasAtras(p.atualizado_em ?? p.criado_em)}
+                  <span className="text-[11px] text-muted-foreground/70">
+                    {diasAtras(p.atualizado_em ?? p.criado_em)}
                   </span>
                 </div>
               </Link>

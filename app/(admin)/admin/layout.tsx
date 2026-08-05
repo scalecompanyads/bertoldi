@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/shared/admin-sidebar'
-import { ThemeToggle } from '@/components/shared/theme-toggle'
+import { AdminMobileNav } from '@/components/admin/admin-mobile-nav'
+import { AdminHeaderUser } from '@/components/admin/admin-header-user'
 import { TarefasAlerta } from '@/components/admin/tarefas-alerta'
+import { getAdminNavBadges } from '@/lib/admin/nav-badges'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -10,13 +12,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   if (!user) redirect('/login')
 
-  const { data: usuario } = await supabase
+  const { data: usuario, error: usuarioError } = await supabase
     .from('usuarios')
     .select('papel, nome')
     .eq('id', user.id)
     .single()
 
-  if (!usuario || usuario.papel === 'cliente') redirect('/cliente')
+  if (usuarioError || !usuario) redirect('/login?erro=perfil')
+  if (usuario.papel === 'cliente') redirect('/cliente')
+
+  const badges = await getAdminNavBadges(user.id)
 
   return (
     <div className="flex h-svh overflow-hidden">
@@ -26,15 +31,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       >
         Ir para o conteúdo
       </a>
-      <AdminSidebar />
+      <div className="hidden md:contents">
+        <AdminSidebar badges={badges} />
+      </div>
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 items-center justify-end border-b px-4 shrink-0 gap-3">
-          <span className="text-sm text-muted-foreground">
-            Olá, <span className="font-medium text-foreground">{usuario.nome}</span>
-          </span>
-          <ThemeToggle />
+        <header className="flex h-14 items-center border-b px-4 shrink-0 gap-3">
+          <AdminMobileNav badges={badges} />
+          <div className="flex-1" />
+          <AdminHeaderUser
+            userId={user.id}
+            nome={usuario.nome}
+          />
         </header>
-        <main id="conteudo-principal" className="flex-1 overflow-y-auto p-6 space-y-4">
+        <main id="conteudo-principal" className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
           <TarefasAlerta />
           {children}
         </main>

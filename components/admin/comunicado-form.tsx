@@ -6,12 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ClienteSelect } from '@/components/shared/cliente-select'
 import { enviarComunicado } from '@/lib/actions/comunicados'
 import type { Cliente } from '@/lib/types'
 
 interface Props {
-  clientes: Pick<Cliente, 'id' | 'nome'>[]
+  clientes: (Pick<Cliente, 'id' | 'nome'> & { cpf_cnpj?: string | null })[]
   clientePreSelecionado?: string
 }
 
@@ -55,17 +55,13 @@ export function ComunicadoForm({ clientes, clientePreSelecionado }: Props) {
 
       <div className="space-y-1.5">
         <Label>Destinatário</Label>
-        <Select value={clienteId} onValueChange={(v) => setClienteId(v ?? '__global__')}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__global__">Todos os clientes (global)</SelectItem>
-            {clientes.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <ClienteSelect
+          value={clienteId}
+          onValueChange={setClienteId}
+          clientes={clientes}
+          globalOption={{ value: '__global__', label: 'Todos os clientes (global)' }}
+          placeholder="Selecionar destinatário..."
+        />
       </div>
 
       <div className="space-y-1.5">
