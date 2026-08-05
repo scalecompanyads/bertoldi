@@ -99,8 +99,7 @@ export async function atualizarCliente(id: string, formData: FormData) {
     return { error: 'E-mail é obrigatório para clientes com acesso liberado.' }
   }
 
-  const emailAnterior = clienteAtual.email?.trim().toLowerCase() ?? null
-  if (clienteAtual.usuario_id && email && email !== emailAnterior) {
+  if (clienteAtual.usuario_id && email) {
     const sync = await sincronizarEmailUsuario(clienteAtual.usuario_id, email)
     if ('error' in sync) return { error: sync.error }
   }

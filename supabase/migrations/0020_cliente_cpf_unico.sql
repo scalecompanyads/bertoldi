@@ -60,21 +60,29 @@ begin
       where k.id = keeper_id;
 
       update public.processos set cliente_id = keeper_id where cliente_id = loser_id;
-      update public.servicos_contratados set cliente_id = keeper_id where cliente_id = loser_id;
-      update public.comunicados set cliente_id = keeper_id where cliente_id = loser_id;
 
-      delete from public.comunicado_destinatarios cd
-      where cd.cliente_id = loser_id
-        and exists (
-          select 1
-          from public.comunicado_destinatarios existente
-          where existente.comunicado_id = cd.comunicado_id
-            and existente.cliente_id = keeper_id
-        );
+      if to_regclass('public.servicos_contratados') is not null then
+        update public.servicos_contratados set cliente_id = keeper_id where cliente_id = loser_id;
+      end if;
 
-      update public.comunicado_destinatarios
-      set cliente_id = keeper_id
-      where cliente_id = loser_id;
+      if to_regclass('public.comunicados') is not null then
+        update public.comunicados set cliente_id = keeper_id where cliente_id = loser_id;
+      end if;
+
+      if to_regclass('public.comunicado_destinatarios') is not null then
+        delete from public.comunicado_destinatarios cd
+        where cd.cliente_id = loser_id
+          and exists (
+            select 1
+            from public.comunicado_destinatarios existente
+            where existente.comunicado_id = cd.comunicado_id
+              and existente.cliente_id = keeper_id
+          );
+
+        update public.comunicado_destinatarios
+        set cliente_id = keeper_id
+        where cliente_id = loser_id;
+      end if;
 
       delete from public.clientes where id = loser_id;
     end loop;

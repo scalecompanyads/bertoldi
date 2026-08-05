@@ -5,6 +5,7 @@ import { assertEquipe } from '@/lib/actions/assert-equipe'
 import { isValidCpf, normalizeCpfDigits } from '@/lib/cpf'
 import { buscarClientePorCpf } from '@/lib/cliente-cpf'
 import { getAuthCallbackUrl } from '@/lib/site-url'
+import { sincronizarEmailUsuario } from '@/lib/actions/sync-auth-email'
 import { revalidatePath } from 'next/cache'
 
 export type ConviteResult =
@@ -111,7 +112,28 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
   }
 
   const redirectTo = getAuthCallbackUrl('/auth/definir-senha')
-  const conviteNovo = !cliente.usuario_id
+  let conviteNovo = !cliente.usuario_id
+  let emailParaLink = email
+
+  if (cliente.usuario_id) {
+    const sync = await sincronizarEmailUsuario(cliente.usuario_id, email)
+    if ('error' in sync) return { error: sync.error }
+
+    const { data: authData, error: authError } = await admin.auth.admin.getUserById(cliente.usuario_id)
+    if (authError || !authData.user) {
+      await admin
+        .from('clientes')
+        .update({
+          usuario_id: null,
+          atualizado_em: new Date().toISOString(),
+          atualizado_por: auth.userId,
+        })
+        .eq('id', clienteId)
+      conviteNovo = true
+    } else {
+      emailParaLink = authData.user.email?.trim().toLowerCase() ?? email
+    }
+  }
 
   const { data: linkData, error: linkError } = conviteNovo
     ? await admin.auth.admin.generateLink({
@@ -124,14 +146,19 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
       })
     : await admin.auth.admin.generateLink({
         type: 'recovery',
-        email,
+        email: emailParaLink,
         options: { redirectTo },
       })
 
   if (linkError || !linkData.user) {
-    return {
-      error: linkError?.message ?? 'Não foi possível criar a conta de acesso do cliente.',
+    const msg = linkError?.message ?? 'Não foi possível criar a conta de acesso do cliente.'
+    if (/user with this email not found/i.test(msg)) {
+      return {
+        error:
+          'A conta de login não está sincronizada com o e-mail do cadastro. Salve o cliente novamente ou use um e-mail ainda não usado em outra conta.',
+      }
     }
+    return { error: msg }
   }
 
   const linkErrorDb = await vincularClienteAoUsuario(
@@ -146,7 +173,7 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
   }
 
   const actionLink = linkData.properties?.action_link
-  const emailEnviado = await tentarEnviarEmail(admin, email, redirectTo, conviteNovo)
+  const emailEnviado = await tentarEnviarEmail(admin, emailParaLink, redirectTo, conviteNovo)
 
   revalidatePath(`/admin/clientes/${clienteId}`)
 
