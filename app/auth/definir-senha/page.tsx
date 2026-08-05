@@ -9,7 +9,7 @@ export default async function DefinirSenhaPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user) redirect('/')
 
   return (
     <main className="flex min-h-svh flex-col items-center justify-center p-6 bg-muted/30">
@@ -17,9 +17,9 @@ export default async function DefinirSenhaPage() {
         <div className="flex flex-col items-center gap-3">
           <BertoldiLogo size="lg" />
           <div className="text-center space-y-1">
-            <h1 className="text-xl font-bold tracking-tight">Crie sua senha</h1>
+            <h1 className="text-xl font-bold tracking-tight">Defina sua senha</h1>
             <p className="text-sm text-muted-foreground">
-              Escolha uma senha para acessar sua área do cliente
+              Escolha uma senha segura para acessar a plataforma
             </p>
           </div>
         </div>

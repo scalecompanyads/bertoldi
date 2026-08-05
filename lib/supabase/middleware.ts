@@ -5,7 +5,7 @@ import { getSupabaseAnonKey, getSupabaseUrl, supabaseConfigurado } from '@/lib/s
 export async function updateSession(request: NextRequest) {
   if (!supabaseConfigurado()) {
     console.error('[proxy] Variáveis Supabase ausentes (NEXT_PUBLIC_SUPABASE_URL / ANON_KEY)')
-    const login = new URL('/login', request.url)
+    const login = new URL('/', request.url)
     login.searchParams.set('erro', 'supabase')
     return NextResponse.redirect(login)
   }
@@ -41,14 +41,24 @@ export async function updateSession(request: NextRequest) {
   // Rota /admin — só equipe (admin, advogado, secretaria)
   if (pathname.startsWith('/admin')) {
     if (!user) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    const { data: perfil } = await supabase
+      .from('usuarios')
+      .select('papel')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (!perfil || perfil.papel === 'cliente') {
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
   // Rota /cliente — só clientes autenticados
   if (pathname.startsWith('/cliente')) {
     if (!user) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 

@@ -1,8 +1,11 @@
 'use server'
 
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertEquipe } from '@/lib/actions/assert-equipe'
 import { enviarConviteAcesso } from '@/lib/actions/cliente-acesso'
+import { emailValido, normalizarEmail } from '@/lib/email-utils'
+import { sincronizarEmailUsuario } from '@/lib/actions/sync-auth-email'
 import { revalidatePath } from 'next/cache'
 
 export async function criarCliente(formData: FormData) {
@@ -10,9 +13,9 @@ export async function criarCliente(formData: FormData) {
   if ('error' in auth) return { error: auth.error }
 
   const liberarAcesso = formData.get('liberar_acesso') === 'on'
-  const admin = createAdminClient()
+  const supabase = await createClient()
 
-  const { data: cliente, error } = await admin
+  const { data: cliente, error } = await supabase
     .from('clientes')
     .insert({
       nome: formData.get('nome') as string,
@@ -56,13 +59,40 @@ export async function atualizarCliente(id: string, formData: FormData) {
   const auth = await assertEquipe()
   if ('error' in auth) return { error: auth.error }
 
-  const admin = createAdminClient()
+  const supabase = await createClient()
+  const emailBruto = (formData.get('email') as string) || ''
+  const email = emailBruto.trim() ? normalizarEmail(emailBruto) : null
 
-  const { error } = await admin.from('clientes').update({
+  if (email && !emailValido(email)) {
+    return { error: 'E-mail inválido.' }
+  }
+
+  const admin = createAdminClient()
+  const { data: clienteAtual, error: leituraError } = await admin
+    .from('clientes')
+    .select('usuario_id, email')
+    .eq('id', id)
+    .single()
+
+  if (leituraError || !clienteAtual) {
+    return { error: leituraError?.message ?? 'Cliente não encontrado.' }
+  }
+
+  if (clienteAtual.usuario_id && !email) {
+    return { error: 'E-mail é obrigatório para clientes com acesso liberado.' }
+  }
+
+  const emailAnterior = clienteAtual.email?.trim().toLowerCase() ?? null
+  if (clienteAtual.usuario_id && email && email !== emailAnterior) {
+    const sync = await sincronizarEmailUsuario(clienteAtual.usuario_id, email)
+    if ('error' in sync) return { error: sync.error }
+  }
+
+  const { error } = await supabase.from('clientes').update({
     nome: formData.get('nome') as string,
     cpf_cnpj: (formData.get('cpf_cnpj') as string) || null,
     telefone: (formData.get('telefone') as string) || null,
-    email: (formData.get('email') as string) || null,
+    email,
     atualizado_em: new Date().toISOString(),
     atualizado_por: auth.userId,
   }).eq('id', id)
@@ -77,10 +107,10 @@ export async function arquivarCliente(id: string) {
   const auth = await assertEquipe()
   if ('error' in auth) return { error: auth.error }
 
-  const admin = createAdminClient()
+  const supabase = await createClient()
   const now = new Date().toISOString()
 
-  const { error } = await admin.from('clientes').update({
+  const { error } = await supabase.from('clientes').update({
     arquivado: true,
     arquivado_em: now,
     arquivado_por: auth.userId,
@@ -99,10 +129,10 @@ export async function restaurarCliente(id: string) {
   const auth = await assertEquipe()
   if ('error' in auth) return { error: auth.error }
 
-  const admin = createAdminClient()
+  const supabase = await createClient()
   const now = new Date().toISOString()
 
-  const { error } = await admin.from('clientes').update({
+  const { error } = await supabase.from('clientes').update({
     arquivado: false,
     arquivado_em: null,
     arquivado_por: null,

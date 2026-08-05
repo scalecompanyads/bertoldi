@@ -203,11 +203,24 @@ export const STATUS_TAREFA_LABEL: Record<StatusTarefa, string> = {
 export interface Comunicado {
   id: string
   cliente_id: string | null
+  publico?: PublicoComunicado
   titulo: string
   mensagem: string
   enviado_em: string
   lido: boolean // legado; novas leituras ficam em ComunicadoDestinatario.lido_em
   cliente?: Pick<Cliente, 'id' | 'nome'> | null
+}
+
+export type PublicoComunicado = 'clientes' | 'advogados' | 'todos'
+
+export interface ComunicadoDestinatarioUsuario {
+  comunicado_id: string
+  usuario_id: string
+  lido_em: string | null
+  email_enviado_em: string | null
+  criado_em: string
+  comunicado?: Comunicado
+  usuario?: Pick<Usuario, 'id' | 'nome' | 'email'>
 }
 
 export interface ComunicadoDestinatario {

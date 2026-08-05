@@ -21,3 +21,23 @@ export async function assertEquipe(): Promise<
 
   return { ok: true, userId: user.id }
 }
+
+export async function assertAdmin(): Promise<
+  { ok: true; userId: string } | { error: string }
+> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const { data: usuario, error } = await supabase
+    .from('usuarios')
+    .select('papel')
+    .eq('id', user.id)
+    .single()
+
+  if (error || !usuario || usuario.papel !== 'admin') {
+    return { error: 'Apenas administradores podem executar esta ação.' }
+  }
+
+  return { ok: true, userId: user.id }
+}

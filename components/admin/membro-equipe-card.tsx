@@ -72,11 +72,19 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
           <div className="space-y-1.5">
             <Label htmlFor={`nome-${membro.id}`}>Nome</Label>
             <Input id={`nome-${membro.id}`} name="nome" required defaultValue={membro.nome} />
-            <p className="text-[11px] text-muted-foreground truncate" title={membro.email}>
-              E-mail de acesso: {membro.email}
-            </p>
           </div>
           <div className="space-y-1.5">
+            <Label htmlFor={`email-${membro.id}`}>E-mail de acesso</Label>
+            <Input
+              id={`email-${membro.id}`}
+              name="email"
+              type="email"
+              required
+              defaultValue={membro.email}
+              autoComplete="email"
+            />
+          </div>
+          <div className="space-y-1.5 sm:col-span-2">
             <Label>Papel</Label>
             <Select value={papel} onValueChange={(v) => setPapel((v as PapelUsuario) ?? membro.papel)}>
               <SelectTrigger><SelectValue /></SelectTrigger>

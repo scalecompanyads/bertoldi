@@ -45,7 +45,7 @@ export function AdminMobileNav({ badges = {} }: { badges?: Record<string, boolea
   async function sair() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
   }
 
   return (

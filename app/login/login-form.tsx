@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { loginAsCliente } from '@/lib/actions/auth'
 import { formatCpfInput } from '@/lib/cpf'
+import { EsqueciSenhaForm } from '@/components/login/esqueci-senha-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,6 +18,11 @@ function ClienteLoginForm() {
   const [password, setPassword] = useState('')
   const [useEmail, setUseEmail] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [modo, setModo] = useState<'login' | 'recuperar'>('login')
+
+  if (modo === 'recuperar') {
+    return <EsqueciSenhaForm tipo="cliente" onVoltar={() => setModo('login')} />
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -71,6 +77,13 @@ function ClienteLoginForm() {
       <button
         type="button"
         className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setModo('recuperar')}
+      >
+        Esqueci minha senha
+      </button>
+      <button
+        type="button"
+        className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
         onClick={() => {
           setUseEmail((v) => !v)
           setIdentifier('')
@@ -87,6 +100,11 @@ function EquipeLoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [modo, setModo] = useState<'login' | 'recuperar'>('login')
+
+  if (modo === 'recuperar') {
+    return <EsqueciSenhaForm tipo="equipe" onVoltar={() => setModo('login')} />
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -154,6 +172,13 @@ function EquipeLoginForm() {
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar como equipe'}
       </Button>
+      <button
+        type="button"
+        className="w-full text-center text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setModo('recuperar')}
+      >
+        Esqueci minha senha
+      </button>
     </form>
   )
 }

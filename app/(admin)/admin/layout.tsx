@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect('/login')
+  if (!user) redirect('/')
 
   const { data: usuario, error: usuarioError } = await supabase
     .from('usuarios')
@@ -18,7 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .eq('id', user.id)
     .single()
 
-  if (usuarioError || !usuario) redirect('/login?erro=perfil')
+  if (usuarioError || !usuario) redirect('/?erro=perfil')
   if (usuario.papel === 'cliente') redirect('/cliente')
 
   const badges = await getAdminNavBadges(user.id)

@@ -9,7 +9,7 @@ import type { Usuario } from '@/lib/types'
 export default async function EquipePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/')
 
   const { data: eu } = await supabase
     .from('usuarios')

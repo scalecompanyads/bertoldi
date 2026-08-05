@@ -44,7 +44,7 @@ export function AdminSidebar({ badges = {} }: { badges?: Record<string, boolean>
   async function sair() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
   }
 
   return (

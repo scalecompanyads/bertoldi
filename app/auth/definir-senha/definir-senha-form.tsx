@@ -46,7 +46,14 @@ export function DefinirSenhaForm() {
     }
 
     toast.success('Senha definida com sucesso!')
-    router.push('/cliente')
+
+    const { data: usuario } = await supabase
+      .from('usuarios')
+      .select('papel')
+      .eq('id', user.id)
+      .single()
+
+    router.push(usuario?.papel === 'cliente' ? '/cliente' : '/admin')
     router.refresh()
   }
 
@@ -79,7 +86,7 @@ export function DefinirSenhaForm() {
         />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Salvando...' : 'Salvar senha e entrar'}
+        {loading ? 'Salvando...' : 'Salvar senha'}
       </Button>
     </form>
   )

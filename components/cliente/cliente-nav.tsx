@@ -20,7 +20,7 @@ export function ClienteNav({ comunicadosNaoLidos = 0 }: { comunicadosNaoLidos?: 
   async function sair() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
   }
 
   return (

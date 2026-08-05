@@ -14,19 +14,50 @@ type PermOk = {
   fotoPath?: string | null
 }
 
+async function getFotoPath(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('usuarios')
+    .select('foto_path')
+    .eq('id', userId)
+    .maybeSingle()
+  if (error || !data) return null
+  return data.foto_path ?? null
+}
+
+function erroDbFoto(message: string) {
+  if (/foto_path|column.*does not exist/i.test(message)) {
+    return 'Fotos de perfil ainda não estão habilitadas no banco. Aplique a migration 0017_usuario_foto.sql no Supabase.'
+  }
+  return message
+}
+
+function erroStorageFoto(message: string) {
+  if (/bucket.*not found|does not exist/i.test(message)) {
+    return 'Bucket de avatars não configurado. Aplique a migration 0017_usuario_foto.sql no Supabase.'
+  }
+  if (/row-level security|permission|policy/i.test(message)) {
+    return 'Sem permissão para enviar a foto. Confirme que a migration 0017_usuario_foto.sql foi aplicada.'
+  }
+  return message
+}
+
 async function assertPodeAlterarFoto(targetUserId: string): Promise<PermOk | { error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
   if (user.id === targetUserId) {
-    const { data: eu } = await supabase
+    const { data: eu, error } = await supabase
       .from('usuarios')
-      .select('papel, foto_path')
+      .select('papel')
       .eq('id', user.id)
       .single()
-    if (!eu || eu.papel === 'cliente') return { error: 'Sem permissão' }
-    return { ok: true, supabase, userId: user.id, fotoPath: eu.foto_path }
+    if (error || !eu || eu.papel === 'cliente') return { error: 'Sem permissão' }
+    const fotoPath = await getFotoPath(supabase, user.id)
+    return { ok: true, supabase, userId: user.id, fotoPath }
   }
 
   const { data: eu } = await supabase
@@ -40,13 +71,14 @@ async function assertPodeAlterarFoto(targetUserId: string): Promise<PermOk | { e
   const admin = createAdminClient()
   const { data: alvo } = await admin
     .from('usuarios')
-    .select('papel, foto_path')
+    .select('papel')
     .eq('id', targetUserId)
     .single()
 
   if (!alvo || alvo.papel === 'cliente') return { error: 'Usuário não encontrado' }
 
-  return { ok: true, supabase, userId: user.id, fotoPath: alvo.foto_path }
+  const fotoPath = await getFotoPath(admin, targetUserId)
+  return { ok: true, supabase, userId: user.id, fotoPath }
 }
 
 function extensaoPorTipo(tipo: string): string {
@@ -72,7 +104,7 @@ export async function uploadFotoUsuario(targetUserId: string, formData: FormData
     .from('avatars')
     .upload(path, arquivo, { upsert: true, contentType: arquivo.type })
 
-  if (uploadError) return { error: uploadError.message }
+  if (uploadError) return { error: erroStorageFoto(uploadError.message) }
 
   const db = perm.userId === targetUserId ? perm.supabase : createAdminClient()
   const { error: dbError } = await db
@@ -80,7 +112,7 @@ export async function uploadFotoUsuario(targetUserId: string, formData: FormData
     .update({ foto_path: path })
     .eq('id', targetUserId)
 
-  if (dbError) return { error: dbError.message }
+  if (dbError) return { error: erroDbFoto(dbError.message) }
 
   revalidatePath('/admin/equipe')
   revalidatePath('/admin', 'layout')
@@ -96,7 +128,7 @@ export async function removerFotoUsuario(targetUserId: string) {
 
   const db = perm.userId === targetUserId ? perm.supabase : createAdminClient()
   const { error } = await db.from('usuarios').update({ foto_path: null }).eq('id', targetUserId)
-  if (error) return { error: error.message }
+  if (error) return { error: erroDbFoto(error.message) }
 
   revalidatePath('/admin/equipe')
   revalidatePath('/admin', 'layout')

@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { emailValido, normalizarEmail } from '@/lib/email-utils'
+import { sincronizarEmailUsuario } from '@/lib/actions/sync-auth-email'
 import { revalidatePath } from 'next/cache'
 import { getAuthCallbackUrl } from '@/lib/site-url'
 import type { PapelUsuario } from '@/lib/types'
@@ -50,6 +52,10 @@ export async function atualizarMembro(id: string, formData: FormData) {
   const nome = (formData.get('nome') as string)?.trim()
   if (!nome) return { error: 'Nome é obrigatório.' }
 
+  const emailBruto = (formData.get('email') as string) ?? ''
+  const email = normalizarEmail(emailBruto)
+  if (!emailValido(email)) return { error: 'E-mail inválido.' }
+
   const papel = formData.get('papel') as PapelUsuario
   if (!PAPEIS_EQUIPE.includes(papel)) return { error: 'Papel inválido.' }
 
@@ -61,6 +67,15 @@ export async function atualizarMembro(id: string, formData: FormData) {
 
   // Trava de segurança: não deixar o escritório sem nenhum admin
   const admin = createAdminClient()
+
+  const { data: membroAtual } = await admin
+    .from('usuarios')
+    .select('email')
+    .eq('id', id)
+    .single()
+
+  if (!membroAtual) return { error: 'Membro não encontrado.' }
+
   if (auth.userId === id && papel !== 'admin') {
     const { count } = await admin
       .from('usuarios')
@@ -69,6 +84,11 @@ export async function atualizarMembro(id: string, formData: FormData) {
     if ((count ?? 0) <= 1) {
       return { error: 'Você é o único administrador — promova outra pessoa antes de mudar seu papel.' }
     }
+  }
+
+  if (normalizarEmail(membroAtual.email) !== email) {
+    const sync = await sincronizarEmailUsuario(id, email)
+    if ('error' in sync) return { error: sync.error }
   }
 
   const { error } = await admin

@@ -12,7 +12,7 @@ async function verificarAcessibilidade(page: Page) {
 }
 
 async function loginEquipe(page: Page) {
-  await page.goto('/login')
+  await page.goto('/')
   await page.getByRole('tab', { name: 'Equipe' }).click()
   await page.getByLabel('E-mail').fill(process.env.E2E_ADMIN_EMAIL!)
   await page.getByLabel('Senha').fill(process.env.E2E_ADMIN_PASSWORD!)
@@ -21,7 +21,7 @@ async function loginEquipe(page: Page) {
 }
 
 async function loginCliente(page: Page) {
-  await page.goto('/login')
+  await page.goto('/')
   await page.getByRole('button', { name: 'Entrar com e-mail' }).click()
   await page.getByLabel('E-mail').fill(process.env.E2E_CLIENT_EMAIL!)
   await page.getByLabel('Senha').fill(process.env.E2E_CLIENT_PASSWORD!)
@@ -30,7 +30,7 @@ async function loginCliente(page: Page) {
 }
 
 test('login atende WCAG AA sem violações graves', async ({ page }) => {
-  await page.goto('/login')
+  await page.goto('/')
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   await verificarAcessibilidade(page)
 })

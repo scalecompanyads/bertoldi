@@ -4,12 +4,13 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const nextRaw = searchParams.get('next') ?? '/'
+  const next = nextRaw.startsWith('/') && !nextRaw.startsWith('//') ? nextRaw : '/'
   const error = searchParams.get('error_description') ?? searchParams.get('error')
 
   if (error) {
     return NextResponse.redirect(
-      `${origin}/login?erro=${encodeURIComponent(error)}`
+      `${origin}/?erro=${encodeURIComponent(error)}`
     )
   }
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
 
     if (exchangeError) {
       return NextResponse.redirect(
-        `${origin}/login?erro=${encodeURIComponent('Link inválido ou expirado.')}`
+        `${origin}/?erro=${encodeURIComponent('Link inválido ou expirado.')}`
       )
     }
   }
