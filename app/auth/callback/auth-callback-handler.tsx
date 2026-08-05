@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { setSessionFromAuthHash } from '@/lib/supabase/auth-hash'
 import { BertoldiLogo } from '@/components/shared/bertoldi-logo'
 
 function destinoSeguro(next: string | null) {
   if (next && next.startsWith('/') && !next.startsWith('//')) return next
   return '/auth/definir-senha'
+}
+
+function falhar(msg: string) {
+  window.location.replace(`/?erro=${encodeURIComponent(msg)}`)
 }
 
 export function AuthCallbackHandler({
@@ -28,11 +33,18 @@ export function AuthCallbackHandler({
     const destino = destinoSeguro(next)
 
     if (error) {
-      window.location.replace(`/?erro=${encodeURIComponent(error)}`)
+      falhar(error)
       return
     }
 
     const supabase = createClient()
+    let cancelado = false
+
+    const timeout = window.setTimeout(() => {
+      if (!cancelado) {
+        falhar('O link demorou demais para validar. Solicite um novo e-mail de redefinição.')
+      }
+    }, 15000)
 
     async function concluir() {
       try {
@@ -43,7 +55,7 @@ export function AuthCallbackHandler({
             type: type as 'recovery' | 'invite' | 'signup' | 'email',
           })
           if (otpError) throw otpError
-          window.location.replace(destino)
+          if (!cancelado) window.location.replace(destino)
           return
         }
 
@@ -51,41 +63,40 @@ export function AuthCallbackHandler({
           setMensagem('Estabelecendo sessão...')
           const { error: codeError } = await supabase.auth.exchangeCodeForSession(code)
           if (codeError) throw codeError
-          window.location.replace(destino)
+          if (!cancelado) window.location.replace(destino)
           return
         }
 
-        // Fluxo legado: tokens no hash (#access_token=...) — só o browser enxerga
         if (typeof window !== 'undefined' && window.location.hash.includes('access_token')) {
           setMensagem('Processando autenticação...')
-          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (session && (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY')) {
-              subscription.unsubscribe()
-              window.location.replace(destino)
-            }
-          })
-          const { data: { session } } = await supabase.auth.getSession()
-          if (session) {
-            subscription.unsubscribe()
-            window.location.replace(destino)
+          const resultado = await setSessionFromAuthHash(supabase)
+          if (resultado.ok) {
+            if (!cancelado) window.location.replace(destino)
+            return
           }
-          return
+          if (resultado.reason === 'error') throw resultado.error
         }
 
         const { data: { session } } = await supabase.auth.getSession()
         if (session) {
-          window.location.replace(destino)
+          if (!cancelado) window.location.replace(destino)
           return
         }
 
         throw new Error('Link inválido ou expirado.')
       } catch (err) {
+        if (cancelado) return
         const msg = err instanceof Error ? err.message : 'Link inválido ou expirado.'
-        window.location.replace(`/?erro=${encodeURIComponent(msg)}`)
+        falhar(msg)
       }
     }
 
     void concluir()
+
+    return () => {
+      cancelado = true
+      window.clearTimeout(timeout)
+    }
   }, [code, tokenHash, type, next, error])
 
   return (
