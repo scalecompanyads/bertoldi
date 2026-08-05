@@ -6,6 +6,7 @@ import { isValidCpf, normalizeCpfDigits } from '@/lib/cpf'
 import { buscarClientePorCpf } from '@/lib/cliente-cpf'
 import { getAuthCallbackUrl } from '@/lib/site-url'
 import { sincronizarEmailUsuario } from '@/lib/actions/sync-auth-email'
+import { botaoHtml, enviarEmail, escapeHtml, layoutEmail } from '@/lib/email'
 import { revalidatePath } from 'next/cache'
 
 export type ConviteResult =
@@ -56,23 +57,31 @@ async function vincularClienteAoUsuario(
   return error
 }
 
-/** Tenta enviar e-mail via Supabase Auth (pode falhar se SMTP/rate limit). */
-async function tentarEnviarEmail(
-  admin: ReturnType<typeof createAdminClient>,
-  email: string,
-  redirectTo: string,
+/** Envia o link de acesso via Resend (mesmo canal dos demais e-mails do sistema). */
+async function enviarLinkAcessoCliente(params: {
+  para: string
+  nome: string
+  actionLink: string
   conviteNovo: boolean
-): Promise<boolean> {
-  if (conviteNovo) {
-    const { error } = await admin.auth.admin.inviteUserByEmail(email, {
-      redirectTo,
-      data: { papel: 'cliente' },
-    })
-    return !error
-  }
+}) {
+  const titulo = params.conviteNovo ? 'Acesso à área do cliente' : 'Redefinir senha de acesso'
+  const intro = params.conviteNovo
+    ? `Olá, ${escapeHtml(params.nome)}. O escritório liberou seu acesso à área do cliente na plataforma Bertoldi Advocacia.`
+    : `Olá, ${escapeHtml(params.nome)}. Use o link abaixo para definir ou redefinir sua senha de acesso.`
 
-  const { error } = await admin.auth.resetPasswordForEmail(email, { redirectTo })
-  return !error
+  const html = layoutEmail(
+    titulo,
+    `<p style="margin:0 0 12px;font-size:14px;color:#3f3f46;line-height:1.5;">${intro}</p>
+     <p style="margin:0 0 12px;font-size:14px;color:#3f3f46;line-height:1.5;">Depois de criar a senha, entre com seu <strong>CPF</strong> na página de login.</p>
+     ${botaoHtml(params.conviteNovo ? 'Criar minha senha' : 'Definir senha', params.actionLink)}
+     <p style="margin:12px 0 0;font-size:12px;color:#71717a;line-height:1.5;word-break:break-all;">Se o botão não funcionar, copie e cole este link no navegador:<br>${escapeHtml(params.actionLink)}</p>`
+  )
+
+  return enviarEmail({
+    para: params.para,
+    assunto: `${titulo} — Bertoldi Advocacia`,
+    html,
+  })
 }
 
 /** Cria/vincula conta Auth e gera link para o cliente definir senha. */
@@ -173,20 +182,6 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
   }
 
   const actionLink = linkData.properties?.action_link
-  const emailEnviado = await tentarEnviarEmail(admin, emailParaLink, redirectTo, conviteNovo)
-
-  revalidatePath(`/admin/clientes/${clienteId}`)
-
-  if (emailEnviado) {
-    return {
-      ok: true,
-      emailEnviado: true,
-      message: conviteNovo
-        ? 'Convite enviado! O cliente receberá um e-mail para criar a senha.'
-        : 'E-mail reenviado para definir ou redefinir a senha.',
-    }
-  }
-
   if (!actionLink) {
     return {
       ok: true,
@@ -195,12 +190,31 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
     }
   }
 
+  const envio = await enviarLinkAcessoCliente({
+    para: emailParaLink,
+    nome: cliente.nome,
+    actionLink,
+    conviteNovo,
+  })
+
+  revalidatePath(`/admin/clientes/${clienteId}`)
+
+  if (envio.ok) {
+    return {
+      ok: true,
+      emailEnviado: true,
+      message: conviteNovo
+        ? 'Convite enviado! O cliente receberá um e-mail para criar a senha.'
+        : 'E-mail enviado com o link para definir ou redefinir a senha.',
+    }
+  }
+
   return {
     ok: true,
     emailEnviado: false,
     linkConvite: actionLink,
-    message: conviteNovo
-      ? 'Conta criada. Copie o link abaixo e envie ao cliente (e-mail automático indisponível — configure SMTP no Supabase).'
-      : 'Link gerado. Copie e envie ao cliente (e-mail automático indisponível — configure SMTP no Supabase).',
+    message: envio.pulado
+      ? 'Link gerado. Configure RESEND_API_KEY para envio automático — copie e envie ao cliente.'
+      : 'Link gerado. Não foi possível enviar o e-mail automaticamente — copie e envie ao cliente.',
   }
 }
