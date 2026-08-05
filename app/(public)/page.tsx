@@ -59,6 +59,14 @@ export default async function HomePage({
               para convidar seu e-mail ou confira se as migrations do Supabase foram aplicadas.
             </div>
           )}
+          {erro && erro !== 'supabase' && erro !== 'perfil' && (
+            <div
+              role="alert"
+              className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"
+            >
+              {erro}
+            </div>
+          )}
           <div className="dark rounded-xl border border-white/10 bg-neutral-900/80 p-6 shadow-xl backdrop-blur-sm space-y-4">
             <LoginForm />
           </div>

@@ -4,6 +4,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/shared/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { HashSessionBootstrap } from '@/components/auth/hash-session-bootstrap'
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -39,6 +40,7 @@ export default function RootLayout({
             >
               Ir para o conteúdo principal
             </a>
+            <HashSessionBootstrap />
             <div id="conteudo-principal" tabIndex={-1} className="contents">
               {children}
             </div>
