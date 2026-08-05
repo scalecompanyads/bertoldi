@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label'
 import { criarCliente, atualizarCliente } from '@/lib/actions/clientes'
 import { salvarLinkConviteNaSessao } from '@/components/admin/cliente-acesso-panel'
 import { formatCpfInput } from '@/lib/cpf'
+import { formatCpfExibicao } from '@/lib/cliente-cpf'
 import type { Cliente } from '@/lib/types'
 
 export function ClienteForm({ cliente }: { cliente?: Cliente }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [liberarAcesso, setLiberarAcesso] = useState(true)
-  const [cpf, setCpf] = useState(cliente?.cpf_cnpj ?? '')
+  const [cpf, setCpf] = useState(formatCpfExibicao(cliente?.cpf_cnpj))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -73,12 +74,14 @@ export function ClienteForm({ cliente }: { cliente?: Cliente }) {
           id="cpf_cnpj"
           name="cpf_cnpj"
           inputMode="numeric"
-          required={!cliente && liberarAcesso}
+          required
           value={cpf}
           placeholder="000.000.000-00"
           onChange={(e) => setCpf(formatCpfInput(e.target.value))}
         />
-        <p className="text-xs text-muted-foreground">Usado pelo cliente para entrar na área restrita.</p>
+        <p className="text-xs text-muted-foreground">
+          Identificador principal do cliente. Não é possível cadastrar dois clientes com o mesmo CPF.
+        </p>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="email">E-mail {(!cliente && liberarAcesso) ? '*' : ''}</Label>

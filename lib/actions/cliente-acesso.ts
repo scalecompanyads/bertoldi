@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertEquipe } from '@/lib/actions/assert-equipe'
 import { isValidCpf, normalizeCpfDigits } from '@/lib/cpf'
+import { buscarClientePorCpf } from '@/lib/cliente-cpf'
 import { getAuthCallbackUrl } from '@/lib/site-url'
 import { revalidatePath } from 'next/cache'
 
@@ -93,6 +94,14 @@ export async function enviarConviteAcesso(clienteId: string): Promise<ConviteRes
   const validacao = validarDadosAcesso(cliente.email, cliente.cpf_cnpj)
   if ('error' in validacao) {
     return { error: validacao.error }
+  }
+
+  const cpfDigits = normalizeCpfDigits(cliente.cpf_cnpj ?? '')
+  const outroComCpf = await buscarClientePorCpf(cpfDigits, clienteId)
+  if (outroComCpf) {
+    return {
+      error: `Este CPF já está vinculado ao cliente "${outroComCpf.nome}". Unifique os cadastros antes de liberar acesso.`,
+    }
   }
 
   const email = validacao.email

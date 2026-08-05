@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { formatCpfExibicao } from '@/lib/cliente-cpf'
 import { Plus, Search } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -155,7 +156,7 @@ export default async function ClientesPage({ searchParams }: Props) {
                   )}
                 </div>
                 {c.cpf_cnpj && (
-                  <p className="text-xs text-muted-foreground/70 mt-0.5 font-mono">{c.cpf_cnpj}</p>
+                  <p className="text-xs text-muted-foreground/70 mt-0.5 font-mono">{formatCpfExibicao(c.cpf_cnpj)}</p>
                 )}
               </div>
               <div className="flex items-center gap-4 text-xs text-muted-foreground">

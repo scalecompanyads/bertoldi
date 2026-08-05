@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { assertEquipe } from '@/lib/actions/assert-equipe'
 import { identificarTribunal, formatarNumeroCNJ, validarFormatoCNJ } from '@/lib/cnj-parser'
 import { isValidCpf, normalizeCpfDigits } from '@/lib/cpf'
+import { erroCpfDuplicado } from '@/lib/cliente-cpf'
 import { processarFilaCapa } from '@/lib/importacao/fila'
 import { revalidatePath } from 'next/cache'
 
@@ -116,7 +117,13 @@ export async function importarLote(linhas: LinhaImportacao[]): Promise<Resultado
         .select('id')
         .single()
       if (errCliente || !novo) {
-        resultados.push({ linha, numero_cnj: numeroCnj, status: 'erro', mensagem: `Erro ao criar cliente: ${errCliente?.message}` })
+        const msg = errCliente?.message ?? 'Erro desconhecido'
+        resultados.push({
+          linha,
+          numero_cnj: numeroCnj,
+          status: 'erro',
+          mensagem: erroCpfDuplicado(msg) ?? `Erro ao criar cliente: ${msg}`,
+        })
         continue
       }
       clienteId = novo.id as string
