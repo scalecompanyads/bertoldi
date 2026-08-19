@@ -11,6 +11,7 @@ export interface Usuario {
   papel: PapelUsuario
   oab_numero: string | null
   oab_uf: string | null
+  aasp_chave: string | null
   foto_path: string | null
   criado_em: string
 }
@@ -288,4 +289,49 @@ export const TIPO_AUDIENCIA_LABEL: Record<TipoAudiencia, string> = {
   una: 'Una',
   justificacao: 'Justificação',
   outra: 'Outra',
+}
+
+export interface Recepcao {
+  id: string
+  cliente_id: string | null
+  cliente_nome: string
+  chegada: string
+  saida: string | null
+  assunto: string | null
+  providencia: string | null
+  responsavel_id: string | null
+  criado_por: string
+  criado_em: string
+  responsavel?: Pick<Usuario, 'id' | 'nome'> | null
+}
+
+export type StatusPeticao = 'aguardando' | 'distribuida' | 'cancelada'
+
+export interface Peticao {
+  id: string
+  cliente_id: string
+  responsavel_id: string | null
+  processo_id: string | null
+  parte_adversa: string | null
+  natureza_acao: string
+  data_contratacao: string
+  urgente: boolean
+  prescricao: boolean
+  decadencia: boolean
+  observacoes: string | null
+  status: StatusPeticao
+  distribuida_em: string | null
+  criado_por: string
+  criado_em: string
+  atualizado_em: string | null
+  atualizado_por: string | null
+  clientes?: Pick<Cliente, 'id' | 'nome'> | null
+  responsavel?: Pick<Usuario, 'id' | 'nome'> | null
+  processo?: Pick<Processo, 'id' | 'numero_cnj'> | null
+}
+
+export const STATUS_PETICAO_LABEL: Record<StatusPeticao, string> = {
+  aguardando: 'Aguardando',
+  distribuida: 'Distribuída',
+  cancelada: 'Cancelada',
 }

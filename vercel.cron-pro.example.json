@@ -9,6 +9,10 @@
       "schedule": "0 10 * * 1-5"
     },
     {
+      "path": "/api/cron/aasp",
+      "schedule": "0 8 * * 1-5"
+    },
+    {
       "path": "/api/cron/importacao",
       "schedule": "30 * * * *"
     },

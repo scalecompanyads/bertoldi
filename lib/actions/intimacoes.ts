@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { buscarComunicacoes, extrairTextoPlano } from '@/lib/djen'
+import { buscarIntimacoesAssociado, resolverIdPublicacao, resolverData } from '@/lib/aasp'
 import { assertEquipe } from './assert-equipe'
 import { enviarEmail, layoutEmail, itemListaHtml, botaoHtml, escapeHtml, emailConfigurado } from '@/lib/email'
 import { getSiteUrl } from '@/lib/site-url'
@@ -178,6 +179,108 @@ export async function sincronizarIntimacoesManual(): Promise<SincronizacaoResult
   if ('error' in auth) return { error: auth.error }
 
   const resultado = await sincronizarIntimacoes(7)
+  revalidatePath('/admin/intimacoes')
+  return resultado
+}
+
+// ─── AASP ─────────────────────────────────────────────────────────────────────
+
+// Busca publicações AASP para cada advogado com aasp_chave cadastrada.
+// Usa diferencial=true (só as não consultadas) para evitar duplicatas.
+export async function sincronizarIntimacoesAasp(): Promise<SincronizacaoResult> {
+  const admin = createAdminClient()
+
+  const { data: advogados } = await admin
+    .from('usuarios')
+    .select('id, nome, email, aasp_chave')
+    .not('aasp_chave', 'is', null)
+    .in('papel', ['admin', 'advogado'])
+
+  if (!advogados?.length) {
+    return { error: 'Nenhum advogado com chave AASP cadastrada. Preencha a chave AASP na tela Equipe.' }
+  }
+
+  const { data: processos } = await admin
+    .from('processos')
+    .select('id, numero_cnj')
+    .not('numero_cnj', 'is', null)
+
+  const processoPorDigitos = new Map<string, string>()
+  for (const p of processos ?? []) {
+    const digitos = (p.numero_cnj as string).replace(/\D/g, '')
+    if (digitos) processoPorDigitos.set(digitos, p.id)
+  }
+
+  let novas = 0
+  let vinculadas = 0
+  const erros: string[] = []
+
+  for (const adv of advogados) {
+    const { publicacoes, erro } = await buscarIntimacoesAssociado({
+      chave: adv.aasp_chave!,
+      diferencial: true,
+    })
+
+    if (erro) {
+      erros.push(`${adv.nome}: ${erro}`)
+      continue
+    }
+
+    for (const pub of publicacoes) {
+      const aaspId = resolverIdPublicacao(pub)
+      const dataDisp = resolverData(pub)
+
+      if (!aaspId || !dataDisp) continue
+
+      const digitos = (pub.numeroProcesso ?? '').replace(/\D/g, '')
+      const processoId = processoPorDigitos.get(digitos) ?? null
+
+      const { error: insertError, data: inserted } = await admin
+        .from('intimacoes')
+        .insert({
+          aasp_id: aaspId,
+          fonte: 'aasp',
+          advogado_id: adv.id,
+          processo_id: processoId,
+          numero_cnj: pub.numeroProcesso ?? null,
+          sigla_tribunal: pub.jornal ?? null,
+          tipo_comunicacao: pub.caderno ?? pub.secao ?? null,
+          nome_orgao: pub.jornal ?? null,
+          nome_classe: null,
+          meio: 'AASP',
+          link: null,
+          texto: pub.texto ?? null,
+          data_disponibilizacao: dataDisp,
+        })
+        .select('id')
+        .maybeSingle()
+
+      // 23505 = unique_violation (aasp_id já sincronizado) — esperado, ignora
+      if (insertError) {
+        if (insertError.code !== '23505') {
+          erros.push(`Publicação AASP ${aaspId}: ${insertError.message}`)
+        }
+        continue
+      }
+
+      if (inserted) {
+        novas++
+        if (processoId) vinculadas++
+      }
+    }
+
+    await new Promise(r => setTimeout(r, 200))
+  }
+
+  return { ok: true, novas, vinculadas, advogadosConsultados: advogados.length, erros }
+}
+
+// Botão "Sincronizar AASP" na tela de intimações
+export async function sincronizarIntimacoesAaspManual(): Promise<SincronizacaoResult> {
+  const auth = await assertEquipe()
+  if ('error' in auth) return { error: auth.error }
+
+  const resultado = await sincronizarIntimacoesAasp()
   revalidatePath('/admin/intimacoes')
   return resultado
 }

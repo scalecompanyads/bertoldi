@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Users, LayoutDashboard, LogOut, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog, Upload, CalendarDays, History, Scale } from 'lucide-react'
+import { Users, LayoutDashboard, LogOut, Bell, Briefcase, Search, SquareKanban, Inbox, UserCog, Upload, CalendarDays, History, Scale, ClipboardList, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BertoldiLogo } from '@/components/shared/bertoldi-logo'
 import { createClient } from '@/lib/supabase/client'
@@ -12,11 +12,14 @@ import { useState } from 'react'
 const NAV = [
   { href: '/admin', label: 'Painel', icon: LayoutDashboard, exact: true },
   { href: '/admin/intimacoes', label: 'Intimações', icon: Inbox, exact: false },
+  { href: '/admin/recepcao', label: 'Recepção', icon: ClipboardList, exact: false },
   { href: '/admin/processos', label: 'Processos', icon: Briefcase, exact: false },
+  { href: '/admin/peticoes', label: 'Petições', icon: FileText, exact: false },
   { href: '/admin/clientes', label: 'Clientes', icon: Users, exact: false },
   { href: '/admin/comunicados', label: 'Comunicados', icon: Bell, exact: false },
   { href: '/admin/tarefas', label: 'Minhas tarefas', icon: SquareKanban, exact: false },
   { href: '/admin/audiencias', label: 'Audiências', icon: CalendarDays, exact: false },
+  { href: '/admin/consulta', label: 'Consulta CNJ', icon: Search, exact: false },
   { href: '/admin/calendarios', label: 'Calendários', icon: Scale, exact: false },
   { href: '/admin/equipe', label: 'Equipe', icon: UserCog, exact: false },
   { href: '/admin/importar', label: 'Importar', icon: Upload, exact: false },
@@ -70,7 +73,7 @@ export function AdminSidebar({ badges = {} }: { badges?: Record<string, boolean>
       </form>
 
       {/* Nav */}
-      <nav aria-label="Navegação administrativa" className="flex flex-col gap-0.5 p-2 flex-1">
+      <nav aria-label="Navegação administrativa" className="flex flex-col gap-0.5 p-2 flex-1 overflow-y-auto">
         {NAV.map(({ href, label, icon: Icon, exact }) => {
           const active = exact ? pathname === href : pathname.startsWith(href)
           const notificar = badges[href]

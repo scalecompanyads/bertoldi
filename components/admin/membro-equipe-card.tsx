@@ -119,9 +119,19 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
             />
           </div>
         </div>
-        <p className="text-xs text-muted-foreground">
-          A OAB é usada para monitorar as intimações publicadas no DJEN em nome deste advogado.
-        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor={`aasp-${membro.id}`}>Chave AASP</Label>
+          <Input
+            id={`aasp-${membro.id}`}
+            name="aasp_chave"
+            defaultValue={membro.aasp_chave ?? ''}
+            placeholder="Token fornecido pela AASP"
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Token individual fornecido pela AASP. Preencha para monitorar publicações via AASP além do DJEN.
+          </p>
+        </div>
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={loading}>
             {loading ? 'Salvando...' : 'Salvar'}
@@ -155,10 +165,16 @@ export function MembroEquipeCard({ membro, usuarioAtualId }: { membro: Usuario; 
         {membro.oab_numero ? (
           <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <BadgeCheck className="h-3 w-3 text-green-600 dark:text-green-400" />
-            OAB {membro.oab_numero}/{membro.oab_uf} — intimações monitoradas
+            OAB {membro.oab_numero}/{membro.oab_uf} — DJEN monitorado
           </p>
         ) : membro.papel !== 'secretaria' ? (
-          <p className="text-xs text-amber-600 dark:text-amber-400">Sem OAB — intimações não monitoradas</p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">Sem OAB — DJEN não monitorado</p>
+        ) : null}
+        {membro.aasp_chave ? (
+          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <BadgeCheck className="h-3 w-3 text-blue-500" />
+            AASP configurada
+          </p>
         ) : null}
         </div>
       </div>

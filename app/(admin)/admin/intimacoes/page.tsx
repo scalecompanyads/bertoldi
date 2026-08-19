@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Inbox } from 'lucide-react'
 import { IntimacaoCard } from '@/components/admin/intimacao-card'
 import { SincronizarIntimacoesBtn } from '@/components/admin/sincronizar-intimacoes-btn'
+import { SincronizarAaspBtn } from '@/components/admin/sincronizar-aasp-btn'
 import { STATUS_INTIMACAO_LABEL, type Intimacao, type StatusIntimacao } from '@/lib/types'
 
 interface Props {
@@ -55,13 +56,16 @@ export default async function IntimacoesPage({ searchParams }: Props) {
         <div>
           <h1 className="text-xl font-semibold">Intimações</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Publicações do DJEN em nome dos advogados do escritório
+            Publicações do DJEN e AASP em nome dos advogados do escritório
             {(naoLidas ?? 0) > 0 && (
               <> — <span className="font-medium text-foreground">{naoLidas} não {naoLidas === 1 ? 'lida' : 'lidas'}</span></>
             )}
           </p>
         </div>
-        <SincronizarIntimacoesBtn />
+        <div className="flex items-center gap-2">
+          <SincronizarAaspBtn />
+          <SincronizarIntimacoesBtn />
+        </div>
       </div>
 
       {/* Filtros por status */}
@@ -97,7 +101,7 @@ export default async function IntimacoesPage({ searchParams }: Props) {
               : 'Nenhuma intimação encontrada.'}
           </p>
           <p className="text-xs text-muted-foreground/70 max-w-sm">
-            A sincronização roda automaticamente em dias úteis. Cadastre a OAB dos advogados
+            A sincronização roda automaticamente em dias úteis. Cadastre a OAB e a chave AASP dos advogados
             em{' '}
             <Link href="/admin/equipe" className="underline hover:text-foreground">
               Equipe

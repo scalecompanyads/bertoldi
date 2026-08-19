@@ -91,9 +91,11 @@ export async function atualizarMembro(id: string, formData: FormData) {
     if ('error' in sync) return { error: sync.error }
   }
 
+  const aaspChave = ((formData.get('aasp_chave') as string) ?? '').trim() || null
+
   const { error } = await admin
     .from('usuarios')
-    .update({ nome, papel, oab_numero: oab.numero, oab_uf: oab.uf })
+    .update({ nome, papel, oab_numero: oab.numero, oab_uf: oab.uf, aasp_chave: aaspChave })
     .eq('id', id)
     .neq('papel', 'cliente') // esta tela nunca altera contas de cliente
 
