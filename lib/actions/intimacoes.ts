@@ -186,8 +186,9 @@ export async function sincronizarIntimacoesManual(): Promise<SincronizacaoResult
 // ─── AASP ─────────────────────────────────────────────────────────────────────
 
 // Busca publicações AASP para cada advogado com aasp_chave cadastrada.
-// Usa diferencial=true (só as não consultadas) para evitar duplicatas.
-export async function sincronizarIntimacoesAasp(): Promise<SincronizacaoResult> {
+// Consulta os últimos `diasRetroativos` dias por data — a deduplicação é feita
+// pelo aasp_id (codigoRelacionamento) com unique_violation 23505 no banco.
+export async function sincronizarIntimacoesAasp(diasRetroativos = 5): Promise<SincronizacaoResult> {
   const admin = createAdminClient()
 
   const { data: advogados } = await admin
@@ -211,65 +212,77 @@ export async function sincronizarIntimacoesAasp(): Promise<SincronizacaoResult> 
     if (digitos) processoPorDigitos.set(digitos, p.id)
   }
 
+  // Gera lista de datas a consultar (hoje até N dias atrás)
+  const datas: string[] = []
+  const hoje = new Date()
+  for (let i = 0; i < diasRetroativos; i++) {
+    const d = new Date(hoje)
+    d.setDate(d.getDate() - i)
+    datas.push(dataISO(d))
+  }
+
   let novas = 0
   let vinculadas = 0
   const erros: string[] = []
 
   for (const adv of advogados) {
-    const { publicacoes, erro } = await buscarIntimacoesAssociado({
-      chave: adv.aasp_chave!,
-      diferencial: true,
-    })
+    for (const data of datas) {
+      const { publicacoes, erro } = await buscarIntimacoesAssociado({
+        chave: adv.aasp_chave!,
+        data,
+      })
 
-    if (erro) {
-      erros.push(`${adv.nome}: ${erro}`)
-      continue
-    }
-
-    for (const pub of publicacoes) {
-      const aaspId = resolverIdPublicacao(pub)
-      const dataDisp = resolverData(pub)
-
-      if (!aaspId || !dataDisp) continue
-
-      const digitos = (pub.numeroProcesso ?? '').replace(/\D/g, '')
-      const processoId = processoPorDigitos.get(digitos) ?? null
-
-      const { error: insertError, data: inserted } = await admin
-        .from('intimacoes')
-        .insert({
-          aasp_id: aaspId,
-          fonte: 'aasp',
-          advogado_id: adv.id,
-          processo_id: processoId,
-          numero_cnj: pub.numeroProcesso ?? null,
-          sigla_tribunal: pub.jornal ?? null,
-          tipo_comunicacao: pub.caderno ?? pub.secao ?? null,
-          nome_orgao: pub.jornal ?? null,
-          nome_classe: null,
-          meio: 'AASP',
-          link: null,
-          texto: pub.texto ?? null,
-          data_disponibilizacao: dataDisp,
-        })
-        .select('id')
-        .maybeSingle()
-
-      // 23505 = unique_violation (aasp_id já sincronizado) — esperado, ignora
-      if (insertError) {
-        if (insertError.code !== '23505') {
-          erros.push(`Publicação AASP ${aaspId}: ${insertError.message}`)
-        }
+      if (erro) {
+        // "Data da publicação vazia" ou erro de final de semana sem publicação — não é crítico
+        erros.push(`${adv.nome} (${data}): ${erro}`)
         continue
       }
 
-      if (inserted) {
-        novas++
-        if (processoId) vinculadas++
-      }
-    }
+      for (const pub of publicacoes) {
+        const aaspId = resolverIdPublicacao(pub)
+        const dataDisp = resolverData(pub)
 
-    await new Promise(r => setTimeout(r, 200))
+        if (!aaspId || !dataDisp) continue
+
+        const digitos = (pub.numeroUnicoProcesso ?? '').replace(/\D/g, '')
+        const processoId = processoPorDigitos.get(digitos) ?? null
+
+        const { error: insertError, data: inserted } = await admin
+          .from('intimacoes')
+          .insert({
+            aasp_id: aaspId,
+            fonte: 'aasp',
+            advogado_id: adv.id,
+            processo_id: processoId,
+            numero_cnj: pub.numeroUnicoProcesso ?? null,
+            sigla_tribunal: pub.jornal?.nomeJornal ?? null,
+            tipo_comunicacao: pub.cabecalho?.trim() || null,
+            nome_orgao: pub.jornal?.nomeJornal ?? null,
+            nome_classe: null,
+            meio: 'AASP',
+            link: null,
+            texto: pub.textoPublicacao ?? null,
+            data_disponibilizacao: dataDisp,
+          })
+          .select('id')
+          .maybeSingle()
+
+        // 23505 = unique_violation (aasp_id já sincronizado) — esperado, ignora
+        if (insertError) {
+          if (insertError.code !== '23505') {
+            erros.push(`Publicação AASP ${aaspId}: ${insertError.message}`)
+          }
+          continue
+        }
+
+        if (inserted) {
+          novas++
+          if (processoId) vinculadas++
+        }
+      }
+
+      await new Promise(r => setTimeout(r, 200))
+    }
   }
 
   return { ok: true, novas, vinculadas, advogadosConsultados: advogados.length, erros }

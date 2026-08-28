@@ -126,7 +126,7 @@ export function identificarTribunal(raw: string): ResultadoCNJ | null {
   const numero = parseCNJ(raw)
   if (!numero) return null
 
-  const chave = `${numero.j}-${numero.tt.replace(/^0+/, '') || '0'}`
+  const chave = `${numero.j}-${numero.tt}`
   let tribunalId = CMAP[chave]
 
   // TJSP: sequencial >= 4.000.000 → eProc (sistema diferente do eSAJ)

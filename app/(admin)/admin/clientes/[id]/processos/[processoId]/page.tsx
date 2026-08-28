@@ -1,15 +1,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { ChevronRight, Eye, EyeOff } from 'lucide-react'
+import { ChevronRight, Eye, EyeOff, ExternalLink } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ProcessoForm } from '@/components/admin/processo-form'
 import { AdicionarEventoForm, RemoverEventoBtn } from '@/components/admin/evento-form'
 import { ObservacaoForm, RemoverObservacaoBtn } from '@/components/admin/observacao-form'
 import { DocumentoUpload, DocumentoItem } from '@/components/admin/documento-upload'
-import { TribunalBadge } from '@/components/admin/tribunal-badge'
 import { VerificarDatajudBtn } from '@/components/admin/verificar-datajud-btn'
-import { MovimentoTimeline } from '@/components/shared/movimento-timeline'
+import { PortaisTribunal } from '@/components/shared/portais-tribunal'
+import { PublicarMovimentoBtn } from '@/components/admin/publicar-movimento-btn'
 import { ProcessoCapa } from '@/components/shared/processo-capa'
 import { DatajudTransparencia } from '@/components/shared/datajud-transparencia'
 import type { DatajudCapa } from '@/lib/datajud'
@@ -27,6 +27,14 @@ const STATUS_COR: Record<string, string> = {
   distribuido: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300',
   em_andamento: 'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300',
   concluido: 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300',
+}
+
+function parseDateBR(dataBR: string, hora?: string): Date {
+  const parts = dataBR.split('/')
+  if (parts.length !== 3) return new Date(0)
+  const [d, m, y] = parts
+  const ts = hora ? `T${hora}:00` : 'T12:00:00'
+  return new Date(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}${ts}`)
 }
 
 export default async function ProcessoDetailPage({ params }: Props) {
@@ -62,8 +70,36 @@ export default async function ProcessoDetailPage({ params }: Props) {
   const evs = (eventos ?? []) as (EventoLinhaDotTempo & { autor: Pick<Usuario, 'id' | 'nome'> | null })[]
   const obs = (observacoes ?? []) as (Observacao & { autor: Pick<Usuario, 'id' | 'nome'> | null })[]
   const docs = (documentos ?? []) as Documento[]
-  const ultimaFonte = (ultimaVerificacao?.raw_response as { fonte?: string } | null)?.fonte
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawVerif = ultimaVerificacao?.raw_response as any
+  const ultimaFonte = rawVerif?.fonte as string | undefined
+  const capaDatajud = rawVerif?.capa as DatajudCapa | null | undefined
+  const linkTribunal = rawVerif?.linkTribunal as string | null | undefined
+  const movimentos = (rawVerif?.movimentos ?? []) as { data: string; hora?: string; descricao: string; orgao?: string }[]
+  const isNovaMov = ultimaVerificacao?.houve_movimentacao ?? false
+  const semDadosDatajud = ultimaVerificacao && !ultimaVerificacao.ultimo_andamento && movimentos.length === 0 && !capaDatajud
+
+  // ─── Unified andamentos: merge manual events + Datajud movements ───────────
+  type AndamentoItem =
+    | { tipo: 'evento'; data: Date; ev: typeof evs[0] }
+    | { tipo: 'movimento'; data: Date; mov: typeof movimentos[0]; isNovo: boolean }
+
+  const andamentos: AndamentoItem[] = [
+    ...evs.map(ev => ({
+      tipo: 'evento' as const,
+      data: new Date(ev.data_evento + 'T12:00:00'),
+      ev,
+    })),
+    ...movimentos.map((mov, i) => ({
+      tipo: 'movimento' as const,
+      data: parseDateBR(mov.data, mov.hora),
+      mov,
+      isNovo: i === 0 && isNovaMov,
+    })),
+  ].sort((a, b) => b.data.getTime() - a.data.getTime())
+
+  const defaultTab = isNovaMov && p.numero_cnj ? 'andamentos' : 'andamentos'
 
   return (
     <div className="space-y-6">
@@ -81,10 +117,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
         <div>
           <h1 className="text-xl font-semibold">{p.tipo_servico}</h1>
           {p.numero_cnj && (
-            <div className="mt-1.5 space-y-1.5">
-              <p className="text-sm font-mono text-muted-foreground">{p.numero_cnj}</p>
-              <TribunalBadge numero={p.numero_cnj} />
-            </div>
+            <p className="mt-1 text-sm font-mono text-muted-foreground">{p.numero_cnj}</p>
           )}
         </div>
         <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COR[p.status_interno]}`}>
@@ -92,67 +125,174 @@ export default async function ProcessoDetailPage({ params }: Props) {
         </span>
       </div>
 
-      {ultimaVerificacao?.houve_movimentacao && p.numero_cnj && (
-        <AutoScrollTo targetId="datajud-section" delay={150} />
+      {isNovaMov && p.numero_cnj && (
+        <AutoScrollTo targetId="andamentos-section" delay={150} />
       )}
 
-      {/* Registrar andamento — sempre à mão, sem precisar achar a aba */}
+      {/* Registrar andamento */}
       <div className="max-w-4xl">
         <AdicionarEventoForm processoId={processoId} clienteId={clienteId} />
       </div>
 
-      <Tabs defaultValue={ultimaVerificacao?.houve_movimentacao && p.numero_cnj ? 'datajud' : 'timeline'}>
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
-          <TabsTrigger value="timeline">Linha do tempo ({evs.length})</TabsTrigger>
+          <TabsTrigger value="andamentos" className="relative">
+            Andamentos
+            {(novasMovimentacoes ?? 0) > 0 && (
+              <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {novasMovimentacoes}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="documentos">Documentos ({docs.length})</TabsTrigger>
           <TabsTrigger value="observacoes">Observações ({obs.length})</TabsTrigger>
-          {p.numero_cnj && (
-            <TabsTrigger value="datajud" className="relative">
-              Datajud
-              {(novasMovimentacoes ?? 0) > 0 && (
-                <span className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                  {novasMovimentacoes}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
           <TabsTrigger value="dados">Dados do processo</TabsTrigger>
         </TabsList>
 
-        {/* ABA LINHA DO TEMPO */}
-        <TabsContent value="timeline" className="mt-6 space-y-4 max-w-4xl">
-          {evs.length > 0 ? (
+        {/* ── Datajud controls — fixos abaixo das abas ─────────────────────── */}
+        {p.numero_cnj && (
+          <div id="andamentos-section" className="mt-4 space-y-3 max-w-3xl">
+            {/* Portais dos tribunais competentes */}
+            <PortaisTribunal numero={p.numero_cnj} />
+
+            {/* Análise Datajud */}
+            <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <DatajudTransparencia
+                    fonte={ultimaFonte}
+                    verificadoEm={ultimaVerificacao?.verificado_em}
+                    compacta
+                  />
+                </div>
+              </div>
+
+              <VerificarDatajudBtn processoId={processoId} autoFetch={!ultimaVerificacao} />
+
+              {semDadosDatajud && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                  <span>⚠</span>
+                  <span>Datajud ainda não indexou este processo.</span>
+                  {linkTribunal && (
+                    <a
+                      href={linkTribunal}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 underline underline-offset-2 hover:opacity-80"
+                    >
+                      Consultar no portal do tribunal
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </p>
+              )}
+
+              {capaDatajud && <ProcessoCapa capa={capaDatajud} />}
+            </div>
+          </div>
+        )}
+
+        {/* ABA ANDAMENTOS — unified timeline ──────────────────────────────── */}
+        <TabsContent value="andamentos" className="mt-6 max-w-4xl">
+          {andamentos.length > 0 ? (
             <div className="relative">
               <div className="absolute left-[7px] top-0 bottom-0 w-px bg-border" />
-              <div className="space-y-4">
-                {evs.map((ev) => (
-                  <div key={ev.id} className="relative flex gap-4">
-                    <div className={`mt-1 h-3.5 w-3.5 rounded-full shrink-0 border-2 z-10 ${ev.visivel_cliente ? 'bg-primary border-primary' : 'bg-background border-muted-foreground'}`} />
-                    <div className="flex-1 pb-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <time className="text-xs text-muted-foreground">
-                            {new Date(ev.data_evento + 'T12:00:00').toLocaleDateString('pt-BR')}
-                          </time>
-                          {!ev.visivel_cliente && (
-                            <span className="ml-2 text-xs text-muted-foreground/70">(interno)</span>
+              <div className="space-y-3">
+                {andamentos.map((item, idx) => {
+                  if (item.tipo === 'evento') {
+                    const ev = item.ev
+                    return (
+                      <div key={`ev-${ev.id}`} className="relative flex gap-3">
+                        <div className={`mt-3 h-3.5 w-3.5 rounded-full shrink-0 border-2 z-10 ${
+                          ev.visivel_cliente
+                            ? 'bg-primary border-primary'
+                            : 'bg-background border-muted-foreground'
+                        }`} />
+                        <div className="flex-1 rounded-lg border bg-card p-3 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <time className="text-xs text-muted-foreground">
+                                {new Date(ev.data_evento + 'T12:00:00').toLocaleDateString('pt-BR')}
+                              </time>
+                              {!ev.visivel_cliente ? (
+                                <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground/60">
+                                  <EyeOff className="h-3 w-3" /> interno
+                                </span>
+                              ) : (
+                                <span className="ml-2 inline-flex items-center gap-1 text-xs text-muted-foreground/60">
+                                  <Eye className="h-3 w-3" /> visível ao cliente
+                                </span>
+                              )}
+                            </div>
+                            <RemoverEventoBtn eventoId={ev.id} processoId={processoId} clienteId={clienteId} />
+                          </div>
+                          <p className="text-sm">{ev.descricao}</p>
+                          {ev.autor && (
+                            <p className="text-xs text-muted-foreground">{ev.autor.nome}</p>
                           )}
                         </div>
-                        <RemoverEventoBtn eventoId={ev.id} processoId={processoId} clienteId={clienteId} />
                       </div>
-                      <p className="text-sm mt-0.5">{ev.descricao}</p>
-                      {ev.autor && <p className="text-xs text-muted-foreground mt-1">{ev.autor.nome}</p>}
+                    )
+                  }
+
+                  // movimento_tribunal
+                  const { mov, isNovo } = item
+                  return (
+                    <div key={`mov-${idx}`} className="relative flex gap-3">
+                      <div className={`mt-3 h-3.5 w-3.5 rounded-full shrink-0 border-2 z-10 ${
+                        isNovo
+                          ? 'bg-green-500 border-green-500'
+                          : 'bg-blue-500/20 border-blue-400/60'
+                      }`} />
+                      <div className={`flex-1 rounded-lg border p-3 space-y-1 ${
+                        isNovo
+                          ? 'border-green-400/50 bg-green-50 dark:border-green-700/50 dark:bg-green-950/30'
+                          : 'bg-card'
+                      }`}>
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <time className={`text-xs font-medium ${
+                            isNovo ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'
+                          }`}>
+                            {mov.data}
+                            {mov.hora && <span className="font-normal opacity-70"> às {mov.hora}</span>}
+                          </time>
+                          <div className="flex items-center gap-1.5">
+                            {isNovo && (
+                              <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/60 dark:text-green-400">
+                                Novo
+                              </span>
+                            )}
+                            <span className="text-[10px] text-muted-foreground/50 border rounded px-1.5 py-0.5">
+                              Tribunal
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-sm leading-relaxed">{mov.descricao}</p>
+                        {mov.orgao && (
+                          <p className="text-xs text-muted-foreground">{mov.orgao}</p>
+                        )}
+                        <div className="pt-1">
+                          <PublicarMovimentoBtn
+                            processoId={processoId}
+                            clienteId={clienteId}
+                            movimento={mov}
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-4">Nenhum evento registrado.</p>
+            <p className="text-sm text-muted-foreground py-4">
+              Nenhum andamento registrado ainda.
+              {p.numero_cnj && ' Use "Analisar andamento" acima para buscar no Datajud.'}
+            </p>
           )}
         </TabsContent>
 
-        {/* ABA DOCUMENTOS */}
+        {/* ABA DOCUMENTOS ──────────────────────────────────────────────────── */}
         <TabsContent value="documentos" className="mt-6 space-y-3 max-w-4xl">
           <DocumentoUpload processoId={processoId} clienteId={clienteId} />
           {docs.length > 0 ? (
@@ -166,7 +306,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
           )}
         </TabsContent>
 
-        {/* ABA OBSERVAÇÕES */}
+        {/* ABA OBSERVAÇÕES ─────────────────────────────────────────────────── */}
         <TabsContent value="observacoes" className="mt-6 space-y-4 max-w-4xl">
           <ObservacaoForm processoId={processoId} clienteId={clienteId} />
           {obs.length > 0 ? (
@@ -196,84 +336,7 @@ export default async function ProcessoDetailPage({ params }: Props) {
           )}
         </TabsContent>
 
-        {/* ABA DATAJUD */}
-        {p.numero_cnj && (
-          <TabsContent id="datajud-section" value="datajud" className="mt-6 max-w-3xl space-y-5">
-            <div className="space-y-1">
-              <h3 className="font-semibold text-sm">Análise de andamento</h3>
-              <p className="text-xs text-muted-foreground">
-                Consulta automática no portal do tribunal (eSAJ) ou via Datajud/CNJ, conforme o tribunal.
-                Cache de 48h — use &quot;Forçar atualização&quot; quando precisar de dado imediato.
-              </p>
-            </div>
-
-            <DatajudTransparencia
-              fonte={ultimaFonte}
-              verificadoEm={ultimaVerificacao?.verificado_em}
-            />
-
-            <VerificarDatajudBtn processoId={processoId} autoFetch={!ultimaVerificacao} />
-
-            {/* Última verificação */}
-            {ultimaVerificacao ? (() => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const raw = ultimaVerificacao.raw_response as any
-              const movs = raw?.movimentos as { data: string; hora?: string; descricao: string; orgao?: string }[] | undefined
-              const capa = raw?.capa as DatajudCapa | null | undefined
-              return (
-                <div className="space-y-3">
-                  {/* Status */}
-                  <div className={`rounded-lg border p-3 flex items-start gap-2.5 text-sm ${
-                    ultimaVerificacao.houve_movimentacao
-                      ? 'border-green-400/50 bg-green-50 dark:border-green-700/50 dark:bg-green-950/30'
-                      : 'bg-muted/40'
-                  }`}>
-                    {ultimaVerificacao.houve_movimentacao && (
-                      <div className="h-2 w-2 rounded-full bg-green-500 shrink-0 mt-1.5" />
-                    )}
-                    <div className="space-y-0.5">
-                      {ultimaVerificacao.houve_movimentacao ? (
-                        <p className="font-medium text-green-700 dark:text-green-400">Nova movimentação detectada</p>
-                      ) : (
-                        <p className="text-muted-foreground">Sem novidades na última verificação.</p>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        {new Date(ultimaVerificacao.verificado_em).toLocaleString('pt-BR')}
-                        {' '}&mdash;{' '}
-                        <span className="capitalize">{ultimaVerificacao.origem}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Dados de capa do processo */}
-                  {capa && <ProcessoCapa capa={capa} />}
-
-                  {/* Timeline */}
-                  {movs && movs.length > 0 ? (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Histórico — {movs.length} movimentações
-                      </p>
-                      <MovimentoTimeline
-                        movimentos={movs}
-                        novaMovimentacao={ultimaVerificacao.houve_movimentacao}
-                        publicarEm={{ processoId, clienteId }}
-                      />
-                    </div>
-                  ) : ultimaVerificacao.ultimo_andamento ? (
-                    <p className="text-sm text-muted-foreground">{ultimaVerificacao.ultimo_andamento}</p>
-                  ) : null}
-                </div>
-              )
-            })(            ) : (
-              <div className="rounded-lg border p-4">
-                <p className="text-sm text-muted-foreground">Nenhuma verificação realizada ainda.</p>
-              </div>
-            )}
-          </TabsContent>
-        )}
-
-        {/* ABA DADOS */}
+        {/* ABA DADOS ───────────────────────────────────────────────────────── */}
         <TabsContent value="dados" className="mt-6 max-w-2xl">
           <ProcessoForm
             clienteId={clienteId}

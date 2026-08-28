@@ -24,6 +24,7 @@ export interface VerificacaoResult {
   capa?: DatajudCapa
   fonte?: string
   verificadoEm?: string
+  linkTribunal?: string
 }
 
 export async function analisarAndamento(
@@ -75,6 +76,7 @@ export async function analisarAndamento(
       capa: raw?.capa ?? undefined,
       verificadoEm: ultimaVerif!.verificado_em,
       fonte: fonteCache,
+      linkTribunal: raw?.linkTribunal ?? undefined,
     }
   }
 
@@ -90,18 +92,47 @@ export async function analisarAndamento(
 
   const now = new Date().toISOString()
 
-  // Sempre salva quando processo foi encontrado (usa admin client para bypassar RLS)
+  // Salva sempre na primeira vez, e sempre quando encontrado
   if (encontrado || !ultimaVerif) {
     const { error: insertError } = await admin.from('verificacoes_datajud').insert({
       processo_id: processoId,
       origem: forcar ? 'manual' : 'automatica',
       houve_movimentacao,
       ultimo_andamento: ultimoAndamento ?? null,
-      raw_response: { fonte, movimentos: movimentos ?? [], capa: capa ?? null },
+      raw_response: {
+        fonte,
+        movimentos: movimentos ?? [],
+        capa: capa ?? null,
+        // Preserva link do tribunal para exibição quando Datajud ainda não indexou
+        linkTribunal: !encontrado ? (resultado.urlPortal ?? null) : null,
+      },
     })
     if (insertError) {
       console.error('[verificar-processo] Erro ao salvar verificação:', insertError)
     }
+  }
+
+  // Auto-preenche campos do processo com dados da capa do Datajud (somente se estiverem vazios)
+  if (encontrado && capa) {
+    const { data: pAtual } = await admin
+      .from('processos')
+      .select('vara_orgao, assunto, data_ajuizamento, tribunal')
+      .eq('id', processoId)
+      .single()
+
+    const updates: Record<string, string | null> = {}
+    if (!pAtual?.vara_orgao && capa.orgaoJulgador)
+      updates.vara_orgao = capa.orgaoJulgador
+    if (!pAtual?.assunto && capa.assuntos?.length)
+      updates.assunto = capa.assuntos.join(', ')
+    if (!pAtual?.data_ajuizamento && capa.dataAjuizamento) {
+      const dParts = capa.dataAjuizamento.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+      if (dParts) updates.data_ajuizamento = `${dParts[3]}-${dParts[2]}-${dParts[1]}`
+    }
+    if (!pAtual?.tribunal && resultado.tribunal)
+      updates.tribunal = resultado.tribunal.sigla
+    if (Object.keys(updates).length > 0)
+      await admin.from('processos').update(updates).eq('id', processoId)
   }
 
   revalidatePath(`/admin/clientes/${processo.cliente_id}/processos/${processoId}`)
@@ -117,6 +148,7 @@ export async function analisarAndamento(
     capa,
     fonte: fonte === 'esaj' ? 'eSAJ' : fonte === 'datajud' ? 'Datajud/CNJ' : fonte,
     verificadoEm: now,
+    linkTribunal: !encontrado ? (resultado.urlPortal ?? undefined) : undefined,
   }
 }
 
